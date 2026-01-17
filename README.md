@@ -1,6 +1,6 @@
 # Quant Data Ingestion Pipeline
 
-A production-grade data ingestion system for financial market data from EODHD (End of Day Historical Data). Designed for survivorship-bias-safe, append-only data collection suitable for quantitative research and backtesting.
+A production-grade data ingestion system for financial market data from EODHD (End of Day Historical Data) and FRED (Federal Reserve Economic Data). Designed for survivorship-bias-safe, append-only data collection suitable for quantitative research and backtesting.
 
 ## Features
 
@@ -23,7 +23,14 @@ A production-grade data ingestion system for financial market data from EODHD (E
    - Key ratios and metrics (P/E, P/B, ROE, margins, etc.)
    - Shares outstanding and market cap
    - Company classifications
-5. **Macroeconomic Data**: Interest rates, inflation, GDP, etc.
+
+### From FRED API
+
+5. **Macroeconomic Data**: 800,000+ economic time series including:
+   - Interest rates (Treasury yields, Fed Funds, mortgage rates, corporate spreads)
+   - Inflation metrics (CPI, PCE, breakeven inflation)
+   - Economic growth (GDP, industrial production, sentiment)
+   - Labor market (unemployment, payrolls, jobless claims, wages)
 
 ## Project Structure
 
@@ -34,6 +41,7 @@ quant-data/
 ├── ingest/                       # Ingestion package
 │   ├── common/                   # Shared utilities
 │   │   ├── eodhd_client.py      # EODHD API client with retries/rate limiting
+│   │   ├── fred_client.py       # FRED API client with retries/rate limiting
 │   │   ├── io_parquet.py        # Parquet I/O with upsert logic
 │   │   ├── logging.py           # Ingestion logging
 │   │   └── schema.py            # Schema definitions
@@ -63,6 +71,7 @@ quant-data/
 
 - Python 3.11+
 - EODHD API key (get one at [eodhd.com](https://eodhd.com/))
+- FRED API key (free, get one at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html))
 
 ### Setup
 
@@ -76,10 +85,13 @@ quant-data/
    pip install -e .
    ```
 
-3. Create a `.env` file with your API key:
+3. Create a `.env` file with your API keys:
    ```bash
-   cp .env.example .env
-   # Edit .env and add your API key
+   # Create .env with both API keys
+   cat > .env << EOF
+   EODHD_API_KEY=your_eodhd_key_here
+   FRED_API_KEY=your_fred_key_here
+   EOF
    ```
 
 4. (Optional) Adjust paths in `config/ingest.yaml` if needed.
@@ -101,7 +113,7 @@ python -m ingest corporate-actions --start 2000-01-01
 # 4. Download fundamentals
 python -m ingest fundamentals
 
-# 5. (Optional) Download macro data
+# 5. Download macro data from FRED
 python -m ingest macro --start 2000-01-01
 ```
 
@@ -140,12 +152,16 @@ python -m ingest fundamentals \
   [--dry-run]
 ```
 
-#### Macroeconomic Data
+#### Macroeconomic Data (from FRED)
 ```bash
 python -m ingest macro \
   --start 2000-01-01 \
-  [--series DGS10 FEDFUNDS] \
+  [--series DGS10 FEDFUNDS UNRATE GDP] \
   [--dry-run]
+
+# Series are FRED series IDs - find more at https://fred.stlouisfed.org/
+# Examples: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), 
+#           UNRATE (Unemployment), GDP, CPIAUCSL (CPI), VIX
 ```
 
 #### Run Full Pipeline
@@ -290,25 +306,33 @@ concurrency:
 3. Add client methods to `common/eodhd_client.py` if needed
 4. Wire up in `__main__.py` CLI
 
-### Adding New Macro Series
+### Adding New Macro Series from FRED
 
-Edit `config/ingest.yaml`:
-```yaml
-datasets:
-  macro:
-    series:
-      - code: "NEW_SERIES"
-        name: "Description"
-        category: "rates"  # or inflation, growth, etc.
-```
+1. Find series at [fred.stlouisfed.org](https://fred.stlouisfed.org/)
+2. Edit `config/ingest.yaml`:
+   ```yaml
+   datasets:
+     macro:
+       series:
+         - code: "NEW_SERIES_ID"  # FRED series ID
+           name: "descriptive_name"
+           category: "rates"  # or inflation, growth, employment, etc.
+   ```
+
+Example FRED series:
+- Interest rates: DGS10, DGS2, FEDFUNDS, T10Y2Y
+- Inflation: CPIAUCSL, CPILFESL, PCEPI, T5YIE
+- Growth: GDP, INDPRO, UMCSENT, VIXCLS
+- Employment: UNRATE, PAYEMS, ICSA, U6RATE
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **API Key Not Found**:
-   - Ensure `.env` file exists with `EODHD_API_KEY=your_key`
-   - Run `python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('EODHD_API_KEY'))"`
+   - Ensure `.env` file exists with both `EODHD_API_KEY` and `FRED_API_KEY`
+   - Test keys: `python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('EODHD_API_KEY'), os.getenv('FRED_API_KEY'))"`
+   - Get FRED API key (free): https://fred.stlouisfed.org/docs/api/api_key.html
 
 2. **Rate Limit Errors**:
    - Reduce `requests_per_second` in `config/ingest.yaml`
@@ -346,5 +370,6 @@ This project is for personal use. Data from EODHD is subject to their terms of s
 
 ## Acknowledgments
 
-- Data provided by [EODHD](https://eodhd.com/)
+- Equity data provided by [EODHD](https://eodhd.com/)
+- Macroeconomic data provided by [FRED](https://fred.stlouisfed.org/) (Federal Reserve Bank of St. Louis)
 - Built with Pandas, PyArrow, and Requests

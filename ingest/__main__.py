@@ -6,7 +6,7 @@ Usage:
     python -m ingest ohlcv --start 2000-01-01
     python -m ingest corporate-actions
     python -m ingest fundamentals --quarterly --annual
-    python -m ingest macro
+    python -m ingest macro                           # Uses FRED API
     python -m ingest all
 """
 
@@ -150,18 +150,26 @@ def main():
     elif command == "macro":
         from .ingest_macro import ingest_macro
         
+        # Macro uses FRED API, not EODHD
+        fred_api_key = os.getenv("FRED_API_KEY")
+        if not fred_api_key:
+            print("Error: FRED_API_KEY not found in environment")
+            print("Get a free API key at https://fred.stlouisfed.org/docs/api/api_key.html")
+            print("Add to your .env file: FRED_API_KEY=your_key_here")
+            sys.exit(1)
+        
         import argparse
-        parser = argparse.ArgumentParser(description="Ingest macro indicators")
+        parser = argparse.ArgumentParser(description="Ingest macro indicators from FRED")
         parser.add_argument("--start", help="Start date (YYYY-MM-DD)")
         parser.add_argument("--end", help="End date (YYYY-MM-DD)")
-        parser.add_argument("--series", nargs="+", help="Specific series codes")
+        parser.add_argument("--series", nargs="+", help="Specific FRED series IDs")
         parser.add_argument("--dry-run", action="store_true", help="Dry run mode")
         parser.add_argument("--force", action="store_true", help="Force re-download")
         args = parser.parse_args()
         
         ingest_macro(
             config_path=config_path,
-            api_key=api_key,
+            api_key=fred_api_key,
             start_date=args.start,
             end_date=args.end,
             series=args.series,
@@ -237,16 +245,21 @@ def main():
                     dry_run=args.dry_run,
                 )
             
-            # Step 5: Macro data
+            # Step 5: Macro data (uses FRED API)
             if not args.skip_macro:
                 print("\n[5/5] Ingesting macro data...")
-                ingest_macro(
-                    config_path=config_path,
-                    api_key=api_key,
-                    start_date=args.start,
-                    end_date=args.end,
-                    dry_run=args.dry_run,
-                )
+                fred_api_key = os.getenv("FRED_API_KEY")
+                if not fred_api_key:
+                    print("Warning: FRED_API_KEY not found, skipping macro data")
+                    print("Get a free API key at https://fred.stlouisfed.org/docs/api/api_key.html")
+                else:
+                    ingest_macro(
+                        config_path=config_path,
+                        api_key=fred_api_key,
+                        start_date=args.start,
+                        end_date=args.end,
+                        dry_run=args.dry_run,
+                    )
             
             print("\n" + "=" * 60)
             print("✓ Full ingestion pipeline complete!")
@@ -268,17 +281,17 @@ def main():
 def print_usage():
     """Print CLI usage information."""
     print("""
-EODHD Data Ingestion Pipeline
+Financial Data Ingestion Pipeline
 
 Usage:
     python -m ingest <command> [options]
 
 Commands:
-    sp500-membership    Download S&P 500 constituent list
-    ohlcv               Download daily OHLCV data
-    corporate-actions   Download dividends and splits
-    fundamentals        Download financial statements and ratios
-    macro               Download macroeconomic indicators
+    sp500-membership    Download S&P 500 constituent list (EODHD)
+    ohlcv               Download daily OHLCV data (EODHD)
+    corporate-actions   Download dividends and splits (EODHD)
+    fundamentals        Download financial statements and ratios (EODHD)
+    macro               Download macroeconomic indicators (FRED)
     all                 Run full pipeline (all datasets)
 
 Options:
@@ -309,6 +322,12 @@ Examples:
     # Download only quarterly statements
     python -m ingest fundamentals --quarterly
 
+    # Download macro data from FRED
+    python -m ingest macro --start 2000-01-01
+
+    # Download specific FRED series
+    python -m ingest macro --series DGS10 UNRATE GDP
+
     # Run full pipeline
     python -m ingest all --start 2000-01-01 --max-workers 10
 
@@ -316,7 +335,8 @@ Examples:
     python -m ingest all --dry-run
 
 Environment:
-    EODHD_API_KEY       API key (required, set in .env file)
+    EODHD_API_KEY       EODHD API key (required for equities data, set in .env file)
+    FRED_API_KEY        FRED API key (required for macro data, free at fred.stlouisfed.org)
 """)
 
 

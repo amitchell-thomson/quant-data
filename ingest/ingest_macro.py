@@ -2,7 +2,7 @@
 Macroeconomic Data Ingestion
 
 Downloads macro time series (interest rates, inflation, GDP, etc.)
-from EODHD's macro indicators API.
+from the Federal Reserve Economic Data (FRED) API.
 """
 
 import sys
@@ -13,41 +13,41 @@ from typing import Optional
 import pandas as pd
 import yaml
 
-from .common.eodhd_client import EODHDClient
+from .common.fred_client import FREDClient
 from .common.io_parquet import upsert_parquet
 from .common.logging import IngestionLogger
 from .common.schema import MACRO_SCHEMA, MACRO_PRIMARY_KEY, MACRO_REQUIRED_COLS
 
 
-def parse_macro_data(
-    data: list[dict],
+def parse_fred_data(
+    observations: list[dict],
     series_code: str,
     series_name: str,
     category: str,
 ) -> pd.DataFrame:
     """
-    Parse macro indicator data from EODHD response.
+    Parse FRED observations into standardized format.
     
     Args:
-        data: List of date/value pairs
-        series_code: Indicator code (e.g., "DGS10")
+        observations: List of FRED observations
+        series_code: FRED series ID (e.g., "DGS10")
         series_name: Human-readable name
         category: Category (e.g., "rates", "inflation")
         
     Returns:
         DataFrame with macro data
+        
+    Note:
+        FRED returns observations with "date" and "value" fields.
+        Value may be "." for missing data, which we convert to NaN.
     """
-    if not data:
+    if not observations:
         return pd.DataFrame()
     
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(observations)
     
-    # Standardize columns
-    column_mapping = {
-        "date": "date",
-        "value": "value",
-    }
-    df = df.rename(columns=column_mapping)
+    # Extract only date and value columns
+    df = df[["date", "value"]].copy()
     
     # Add metadata
     df["series_code"] = series_code
@@ -55,14 +55,13 @@ def parse_macro_data(
     df["category"] = category
     
     # Convert types
-    if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"])
     
-    if "value" in df.columns:
-        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+    # FRED uses "." for missing values; convert to numeric (becomes NaN)
+    df["value"] = pd.to_numeric(df["value"], errors="coerce")
     
     # Drop rows with missing values
-    df = df.dropna(subset=["date", "value"])
+    df = df.dropna(subset=["date", "value"])  # type: ignore
     
     return df
 
@@ -77,11 +76,11 @@ def ingest_macro(
     force: bool = False,
 ) -> None:
     """
-    Ingest macroeconomic indicators.
+    Ingest macroeconomic indicators from FRED.
     
     Args:
         config_path: Path to ingest.yaml config file
-        api_key: EODHD API key
+        api_key: FRED API key
         start_date: Start date (YYYY-MM-DD)
         end_date: End date (YYYY-MM-DD)
         series: Optional list of series codes to ingest
@@ -124,15 +123,15 @@ def ingest_macro(
     # Initialize logger
     logger = IngestionLogger(log_path)
     
-    # Create client
-    client = EODHDClient(
+    # Create FRED client
+    fred_config = config["api"]["fred"]
+    client = FREDClient(
         api_key=api_key,
-        base_url=config["api"]["base_url"],
-        timeout=config["api"]["timeout"],
-        max_retries=config["api"]["max_retries"],
-        retry_backoff_factor=config["api"]["retry_backoff_factor"],
-        rate_limit_rps=config["api"]["rate_limit"]["requests_per_second"],
-        rate_limit_burst=config["api"]["rate_limit"]["burst_size"],
+        base_url=fred_config["base_url"],
+        timeout=fred_config["timeout"],
+        max_retries=fred_config["max_retries"],
+        retry_backoff_factor=fred_config["retry_backoff_factor"],
+        rate_limit_rpm=fred_config["rate_limit"]["requests_per_minute"],
     )
     
     # Fetch each series
@@ -148,14 +147,14 @@ def ingest_macro(
         print(f"\nFetching {series_name} ({series_code})...")
         
         try:
-            data = client.get_macro_indicator(
-                indicator_code=series_code,
-                country="USA",
-                from_date=start_date,
-                to_date=end_date,
+            # Fetch data from FRED
+            observations = client.get_series_observations(
+                series_id=series_code,
+                observation_start=start_date,
+                observation_end=end_date,
             )
             
-            df = parse_macro_data(data, series_code, series_name, category)
+            df = parse_fred_data(observations, series_code, series_name, category)
             
             if df.empty:
                 print(f"  No data found")
@@ -180,6 +179,7 @@ def ingest_macro(
         # Group by category and write separate files
         for category in combined["category"].unique():
             category_df = combined[combined["category"] == category].copy()
+            assert isinstance(category_df, pd.DataFrame)  # Type narrowing for linter
             category_path = macro_root / category
             category_file = category_path / f"{category}.parquet"
             
@@ -224,19 +224,20 @@ if __name__ == "__main__":
     
     load_dotenv()
     
-    api_key = os.getenv("EODHD_API_KEY")
+    api_key = os.getenv("FRED_API_KEY")
     if not api_key:
-        print("Error: EODHD_API_KEY not found in environment")
+        print("Error: FRED_API_KEY not found in environment")
+        print("Get a free API key at https://fred.stlouisfed.org/docs/api/api_key.html")
         sys.exit(1)
     
     config_path = Path(__file__).parent.parent / "config" / "ingest.yaml"
     
     # Parse CLI args
     import argparse
-    parser = argparse.ArgumentParser(description="Ingest macro indicators")
+    parser = argparse.ArgumentParser(description="Ingest macro indicators from FRED")
     parser.add_argument("--start", help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end", help="End date (YYYY-MM-DD)")
-    parser.add_argument("--series", nargs="+", help="Specific series codes")
+    parser.add_argument("--series", nargs="+", help="Specific FRED series IDs")
     parser.add_argument("--dry-run", action="store_true", help="Dry run")
     parser.add_argument("--force", action="store_true", help="Force re-download")
     

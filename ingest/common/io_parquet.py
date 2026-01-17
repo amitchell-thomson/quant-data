@@ -85,6 +85,29 @@ def merge_dataframes(
     # Mark source for tracking
     existing = existing.copy()
     new = new.copy()
+    
+    # Normalize date columns to ensure consistent types before sorting
+    # Parquet date32 can load as datetime.date objects, which can't be
+    # compared with Timestamp objects during sort_values
+    import warnings
+    
+    for col in existing.columns:
+        if col in new.columns:
+            existing_dtype = str(existing[col].dtype)
+            new_dtype = str(new[col].dtype)
+            
+            # If either column is datetime-like or object (could be date), normalize
+            if ('datetime' in existing_dtype or 'datetime' in new_dtype or 
+                existing_dtype == 'object' or new_dtype == 'object'):
+                try:
+                    # Suppress the dateutil warning for mixed formats
+                    with warnings.catch_warnings():
+                        warnings.filterwarnings('ignore', message='Could not infer format')
+                        existing[col] = pd.to_datetime(existing[col])
+                        new[col] = pd.to_datetime(new[col])
+                except (ValueError, TypeError):
+                    pass  # Not a date column, leave as is
+    
     existing["_source"] = "existing"
     new["_source"] = "new"
     
