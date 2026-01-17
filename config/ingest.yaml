@@ -53,7 +53,7 @@ logging:
 # Dataset-specific settings
 datasets:
   ohlcv:
-    output_path: "equities/ohlcv/daily/us"
+    output_path: "equities/ohlcv/daily"
     partition_by: "exchange"  # Create subdirs by exchange
     min_required_fields: ["date", "open", "high", "low", "close", "volume"]
     

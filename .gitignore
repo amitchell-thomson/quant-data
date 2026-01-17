@@ -49,13 +49,20 @@ htmlcov/
 # Logs
 *.log
 
-# Data (optional - uncomment if you don't want to track data in git)
-equities/corporate-actions/*
-equities/fundamentals/*
-equities/index_membership/*
-equities/ohlcv/*
-macro/rates/*
-macro/inflation/*
-macro/growth/*
-macro/calendars/*
-_meta/*
+# Data files (exclude all Parquet data to avoid committing large datasets)
+# Equities data
+equities/ohlcv/**/*.parquet
+equities/corporate-actions/**/*.parquet
+equities/fundamentals/**/*.parquet
+equities/index_membership/**/*.parquet
+
+# Macro economic data
+macro/**/*.parquet
+macro/**/*.csv
+
+# Metadata and logs
+_meta/*.parquet
+_meta/schema-versions/*.json
+
+# Keep directory structure but ignore data files
+!**/.gitkeep
