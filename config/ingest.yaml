@@ -1,0 +1,103 @@
+# EODHD Ingestion Configuration
+# This file defines the paths, universes, and behavior for data ingestion
+
+# Root directory for all market data (absolute or relative to project root)
+data_root: "/Users/alecmitchell-thomson/Desktop/Coding/quant-data"
+
+# Date ranges for historical data ingestion
+# Use "earliest" to pull from the beginning of available history
+date_ranges:
+  default_start: "2000-01-01"  # Fallback if no specific range provided
+  default_end: null  # null = today
+
+# Universe definition
+universe:
+  sp500:
+    index_code: "GSPC.INDX"  # EODHD code for S&P 500
+    exchanges:
+      - NYSE
+      - NASDAQ
+      - AMEX
+    membership_file: "equities/index_membership/sp500.parquet"
+
+# EODHD API configuration
+api:
+  base_url: "https://eodhd.com/api"
+  timeout: 30  # seconds
+  max_retries: 5
+  retry_backoff_factor: 2.0  # exponential backoff: 2, 4, 8, 16, 32 seconds
+  rate_limit:
+    requests_per_second: 10  # Conservative limit
+    burst_size: 20
+
+# Concurrency settings
+concurrency:
+  max_workers: 5  # Parallel ticker downloads
+  batch_size: 50  # Tickers per batch for logging
+
+# Data quality & processing
+processing:
+  deduplicate: true
+  validate_schema: true
+  handle_delisted_suffix: true  # Strip .US_old -> .US for consistency
+  fill_missing_exchanges: true  # Infer exchange from ticker if missing
+
+# Ingestion log settings
+logging:
+  ingestion_log_path: "_meta/ingestion-log.parquet"
+  ticker_mapping_path: "_meta/ticker-mapping.parquet"
+  schema_versions_path: "_meta/schema-versions"
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  progress_bar: true
+
+# Dataset-specific settings
+datasets:
+  ohlcv:
+    output_path: "equities/ohlcv/daily/us"
+    partition_by: "exchange"  # Create subdirs by exchange
+    min_required_fields: ["date", "open", "high", "low", "close", "volume"]
+    
+  corporate_actions:
+    dividends_path: "equities/corporate-actions/dividends.parquet"
+    splits_path: "equities/corporate-actions/splits.parquet"
+    
+  fundamentals:
+    annual_path: "equities/fundamentals/annual"
+    quarterly_path: "equities/fundamentals/quarterly"
+    ratios_path: "equities/fundamentals/ratios"
+    shares_outstanding_path: "equities/fundamentals/shares-outstanding"
+    classifications_path: "equities/fundamentals/classifications"
+    # Which sections to pull from EODHD fundamentals endpoint
+    sections:
+      - Financials
+      - Highlights
+      - Valuation
+      - SharesStats
+      - Technicals
+      - SplitsDividends
+      - AnalystRatings
+      - Holders
+      - ESGScores
+    
+  macro:
+    rates_path: "macro/rates"
+    inflation_path: "macro/inflation"
+    growth_path: "macro/growth"
+    calendars_path: "macro/calendars"
+    # Define macro series to ingest
+    series:
+      - code: "DGS10"  # 10Y Treasury
+        name: "us_10y_treasury"
+        category: "rates"
+      - code: "DGS2"
+        name: "us_2y_treasury"
+        category: "rates"
+      - code: "FEDFUNDS"
+        name: "federal_funds_rate"
+        category: "rates"
+      - code: "CPIAUCSL"
+        name: "cpi_all_urban"
+        category: "inflation"
+      - code: "GDP"
+        name: "us_gdp"
+        category: "growth"
