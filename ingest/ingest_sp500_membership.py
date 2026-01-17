@@ -34,48 +34,114 @@ def parse_sp500_constituents(
     """
     Parse S&P 500 constituents from EODHD fundamentals response.
     
+    Uses the HistoricalTickerComponents field to capture full membership history,
+    including delisted and removed companies for survivorship-bias-free analysis.
+    
     Args:
         data: Response from get_index_constituents()
         index_name: Name of the index
         
     Returns:
-        DataFrame with membership records
+        DataFrame with membership records including historical constituents
     """
-    # EODHD returns constituents under "Components" key
-    components = data.get("Components", {})
+    # Prefer HistoricalTickerComponents for full historical membership
+    historical_components = data.get("HistoricalTickerComponents", {})
     
-    if not components:
-        print("  Warning: No components found in index data")
-        return pd.DataFrame()
-    
-    records = []
-    for key, info in components.items():
-        # Extract ticker code from the info dict
-        ticker_code = info.get("Code")
-        if not ticker_code:
-            continue  # Skip if no ticker code
+    if historical_components:
+        print(f"  Using HistoricalTickerComponents ({len(historical_components)} records)")
+        records = []
         
-        # Add exchange suffix if not present
-        ticker = ticker_code if "." in ticker_code else f"{ticker_code}.US"
+        for key, info in historical_components.items():
+            # Extract ticker code from the info dict
+            ticker_code = info.get("Code")
+            if not ticker_code:
+                continue  # Skip if no ticker code
+            
+            # Add exchange suffix if not present
+            ticker = ticker_code if "." in ticker_code else f"{ticker_code}.US"
+            
+            # Parse dates
+            start_date = info.get("StartDate")  # e.g., "2000-06-05"
+            end_date = info.get("EndDate")      # null if still active
+            
+            # Convert to datetime objects
+            start_date = pd.to_datetime(start_date).date() if start_date else None
+            end_date = pd.to_datetime(end_date).date() if end_date else None
+            
+            # Parse delisting status
+            is_delisted = bool(info.get("IsDelisted", 0))
+            
+            records.append({
+                "ticker": ticker,
+                "index_name": index_name,
+                "start_date": start_date,
+                "end_date": end_date,
+                "is_delisted": is_delisted,
+                "company_name": info.get("Name"),
+                "exchange": "US",  # Historical data doesn't include exchange details
+                "sector": None,    # Not available in historical data
+                "industry": None,  # Not available in historical data
+            })
         
-        records.append({
-            "ticker": ticker,
-            "index_name": index_name,
-            "start_date": None,  # EODHD doesn't provide historical start date
-            "end_date": None,    # Still in index
-            "company_name": info.get("Name"),
-            "exchange": info.get("Exchange"),
-            "sector": info.get("Sector"),
-            "industry": info.get("Industry"),
-        })
+        df = pd.DataFrame(records)
+        
+        # Enrich with sector/industry from current Components if available
+        current_components = data.get("Components", {})
+        if current_components:
+            # Create a mapping of ticker -> sector/industry
+            enrichment = {}
+            for key, info in current_components.items():
+                ticker_code = info.get("Code")
+                if ticker_code:
+                    ticker = ticker_code if "." in ticker_code else f"{ticker_code}.US"
+                    enrichment[ticker] = {
+                        "sector": info.get("Sector"),
+                        "industry": info.get("Industry"),
+                        "exchange": info.get("Exchange", "US"),
+                    }
+            
+            # Apply enrichment to active members
+            for idx, row in df.iterrows():
+                if row["ticker"] in enrichment and row["end_date"] is None:
+                    df.at[idx, "sector"] = enrichment[row["ticker"]]["sector"]
+                    df.at[idx, "industry"] = enrichment[row["ticker"]]["industry"]
+                    df.at[idx, "exchange"] = enrichment[row["ticker"]]["exchange"]
+        
+        return df
     
-    df = pd.DataFrame(records)
-    
-    # Set start_date to today if not available (current membership snapshot)
-    if "start_date" not in df.columns or df["start_date"].isna().all():
-        df["start_date"] = datetime.now().date()
-    
-    return df
+    else:
+        # Fallback to current Components only (legacy behavior)
+        print("  Warning: HistoricalTickerComponents not found, using current Components only")
+        components = data.get("Components", {})
+        
+        if not components:
+            print("  Warning: No components found in index data")
+            return pd.DataFrame()
+        
+        records = []
+        for key, info in components.items():
+            # Extract ticker code from the info dict
+            ticker_code = info.get("Code")
+            if not ticker_code:
+                continue  # Skip if no ticker code
+            
+            # Add exchange suffix if not present
+            ticker = ticker_code if "." in ticker_code else f"{ticker_code}.US"
+            
+            records.append({
+                "ticker": ticker,
+                "index_name": index_name,
+                "start_date": datetime.now().date(),  # Snapshot date
+                "end_date": None,                     # Still in index
+                "is_delisted": False,                 # Current members are not delisted
+                "company_name": info.get("Name"),
+                "exchange": info.get("Exchange", "US"),
+                "sector": info.get("Sector"),
+                "industry": info.get("Industry"),
+            })
+        
+        df = pd.DataFrame(records)
+        return df
 
 
 def ingest_sp500_membership(
@@ -146,13 +212,33 @@ def ingest_sp500_membership(
             )
             return
         
-        print(f"Found {len(df)} current constituents")
+        # Calculate statistics
+        total_constituents = len(df)
+        current_members = df["end_date"].isna().sum()
+        removed_members = df["end_date"].notna().sum()
+        
+        # Breakdown of removed members
+        if "is_delisted" in df.columns and removed_members > 0:
+            removed_df = df[df["end_date"].notna()]
+            delisted_count = removed_df["is_delisted"].sum()
+            still_trading_count = (~removed_df["is_delisted"]).sum()
+        else:
+            delisted_count = 0
+            still_trading_count = 0
+        
+        print(f"Found {total_constituents} total constituents:")
+        print(f"  Current members: {current_members}")
+        print(f"  Historical (removed): {removed_members}")
+        if removed_members > 0:
+            print(f"    - Delisted: {delisted_count}")
+            print(f"    - Still trading: {still_trading_count}")
         print(f"\nSample tickers: {', '.join(df['ticker'].head(10).tolist())}")
         
-        # Show sector breakdown
+        # Show sector breakdown for current members
         if "sector" in df.columns and df["sector"].notna().any():
-            print("\nSector breakdown:")
-            sector_counts = df["sector"].value_counts()
+            current_df = df[df["end_date"].isna()]
+            print("\nSector breakdown (current members):")
+            sector_counts = current_df["sector"].value_counts()
             for sector, count in sector_counts.head(10).items():
                 print(f"  {sector}: {count}")
         

@@ -43,16 +43,17 @@ OHLCV_REQUIRED_COLS = ["ticker", "date", "open", "high", "low", "close", "volume
 MEMBERSHIP_SCHEMA = pa.schema([
     ("ticker", pa.string(), False),
     ("index_name", pa.string(), False),  # "SP500"
-    ("start_date", pa.date32(), False),  # Date added to index
+    ("start_date", pa.date32(), True),   # Date added to index (null if unknown)
     ("end_date", pa.date32(), True),     # null = still in index
+    ("is_delisted", pa.bool_(), True),   # True = no longer trades on exchange
     ("company_name", pa.string(), True),
     ("exchange", pa.string(), True),
     ("sector", pa.string(), True),
     ("industry", pa.string(), True),
 ])
 
-MEMBERSHIP_PRIMARY_KEY = ["ticker", "index_name", "start_date"]
-MEMBERSHIP_REQUIRED_COLS = ["ticker", "index_name", "start_date"]
+MEMBERSHIP_PRIMARY_KEY = ["ticker", "index_name"]  # Simplified - each ticker appears once
+MEMBERSHIP_REQUIRED_COLS = ["ticker", "index_name"]
 
 
 # =============================================================================

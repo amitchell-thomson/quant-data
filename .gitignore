@@ -50,6 +50,12 @@ htmlcov/
 *.log
 
 # Data (optional - uncomment if you don't want to track data in git)
-# equities/
-# macro/
-# _meta/*.parquet
+equities/corporate-actions/*
+equities/fundamentals/*
+equities/index_membership/*
+equities/ohlcv/*
+macro/rates/*
+macro/inflation/*
+macro/growth/*
+macro/calendars/*
+_meta/*
