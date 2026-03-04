@@ -7,13 +7,13 @@ data_root: "/Users/alecmitchell-thomson/Desktop/Coding/quant-data"
 # Date ranges for historical data ingestion
 # Use "earliest" to pull from the beginning of available history
 date_ranges:
-  default_start: "2000-01-01"  # Fallback if no specific range provided
-  default_end: null  # null = today
+  default_start: "1985-01-01" # Fallback if no specific range provided
+  default_end: null # null = today
 
 # Universe definition
 universe:
   sp500:
-    index_code: "GSPC.INDX"  # EODHD code for S&P 500
+    index_code: "GSPC.INDX" # EODHD code for S&P 500
     exchanges:
       - NYSE
       - NASDAQ
@@ -25,13 +25,13 @@ api:
   # EODHD API (for equities data)
   eodhd:
     base_url: "https://eodhd.com/api"
-    timeout: 30  # seconds
+    timeout: 30 # seconds
     max_retries: 3
-    retry_backoff_factor: 2.0  # exponential backoff: 2, 4, 8, 16, 32 seconds
+    retry_backoff_factor: 2.0 # exponential backoff: 2, 4, 8, 16, 32 seconds
     rate_limit:
-      requests_per_second: 10  # Conservative limit
+      requests_per_second: 10 # Conservative limit
       burst_size: 20
-  
+
   # FRED API (for macro data)
   fred:
     base_url: "https://api.stlouisfed.org/fred"
@@ -39,8 +39,8 @@ api:
     max_retries: 3
     retry_backoff_factor: 2.0
     rate_limit:
-      requests_per_minute: 120  # FRED's rate limit
-  
+      requests_per_minute: 120 # FRED's rate limit
+
   # Legacy fields for backward compatibility
   base_url: "https://eodhd.com/api"
   timeout: 30
@@ -52,35 +52,35 @@ api:
 
 # Concurrency settings
 concurrency:
-  max_workers: 5  # Parallel ticker downloads
-  batch_size: 50  # Tickers per batch for logging
+  max_workers: 5 # Parallel ticker downloads
+  batch_size: 50 # Tickers per batch for logging
 
 # Data quality & processing
 processing:
   deduplicate: true
   validate_schema: true
-  handle_delisted_suffix: true  # Strip .US_old -> .US for consistency
-  fill_missing_exchanges: true  # Infer exchange from ticker if missing
+  handle_delisted_suffix: true # Strip .US_old -> .US for consistency
+  fill_missing_exchanges: true # Infer exchange from ticker if missing
 
 # Ingestion log settings
 logging:
   ingestion_log_path: "_meta/ingestion-log.parquet"
   ticker_mapping_path: "_meta/ticker-mapping.parquet"
   schema_versions_path: "_meta/schema-versions"
-  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_level: "INFO" # DEBUG, INFO, WARNING, ERROR
   progress_bar: true
 
 # Dataset-specific settings
 datasets:
   ohlcv:
     output_path: "equities/ohlcv/daily"
-    partition_by: "exchange"  # Create subdirs by exchange
+    partition_by: "exchange" # Create subdirs by exchange
     min_required_fields: ["date", "open", "high", "low", "close", "volume"]
-    
+
   corporate_actions:
     dividends_path: "equities/corporate-actions/dividends.parquet"
     splits_path: "equities/corporate-actions/splits.parquet"
-    
+
   fundamentals:
     annual_path: "equities/fundamentals/annual"
     quarterly_path: "equities/fundamentals/quarterly"
@@ -98,7 +98,7 @@ datasets:
       - AnalystRatings
       - Holders
       - ESGScores
-    
+
   macro:
     rates_path: "macro/rates"
     inflation_path: "macro/inflation"
@@ -108,7 +108,6 @@ datasets:
     # Define FRED series to ingest (800,000+ series available)
     # Find series at https://fred.stlouisfed.org/
     series:
-
       # ============================
       # Interest Rates, Curve & Credit
       # ============================
@@ -199,6 +198,11 @@ datasets:
         name: "pce_core"
         category: "inflation"
         description: "Core PCE excluding food and energy; key indicator for monetary policy decisions."
+
+      - code: "PPIACO"
+        name: "ppi_all_commodities"
+        category: "inflation"
+        description: "Producer Price Index for All Commodities; measures average changes in selling prices received by domestic producers, a leading indicator of pipeline inflation."
 
       - code: "T5YIE"
         name: "5y_breakeven_inflation"

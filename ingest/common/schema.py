@@ -237,6 +237,27 @@ MACRO_REQUIRED_COLS = ["series_code", "date", "value"]
 
 
 # =============================================================================
+# Macro Time Series — ALFRED (Archival / Vintage)
+# =============================================================================
+# ALFRED extends FRED by recording the real-time period during which each value
+# was the latest available.  The primary key is (series_code, date, realtime_start)
+# because the same (series, date) pair can have multiple historical revisions.
+
+MACRO_ALFRED_SCHEMA = pa.schema([
+    ("series_code",    pa.string(),  False),  # e.g., "DGS10", "FEDFUNDS"
+    ("date",           pa.date32(), False),   # Observation date
+    ("realtime_start", pa.date32(), False),   # First date this value was latest
+    ("realtime_end",   pa.date32(), True),    # Last date this value was latest; nullable for current vintage
+    ("value",          pa.float64(), False),
+    ("series_name",    pa.string(),  True),
+    ("category",       pa.string(),  True),   # rates, inflation, growth, etc.
+])
+
+MACRO_ALFRED_PRIMARY_KEY   = ["series_code", "date", "realtime_start"]
+MACRO_ALFRED_REQUIRED_COLS = ["series_code", "date", "realtime_start", "value"]
+
+
+# =============================================================================
 # Meta: Ingestion Log
 # =============================================================================
 
@@ -362,6 +383,7 @@ def get_schema_for_dataset(dataset: str) -> tuple[pa.Schema, list[str], list[str
         "shares_outstanding": (SHARES_OUTSTANDING_SCHEMA, SHARES_OUTSTANDING_REQUIRED_COLS, SHARES_OUTSTANDING_PRIMARY_KEY),
         "classifications": (CLASSIFICATIONS_SCHEMA, CLASSIFICATIONS_REQUIRED_COLS, CLASSIFICATIONS_PRIMARY_KEY),
         "macro": (MACRO_SCHEMA, MACRO_REQUIRED_COLS, MACRO_PRIMARY_KEY),
+        "macro_alfred": (MACRO_ALFRED_SCHEMA, MACRO_ALFRED_REQUIRED_COLS, MACRO_ALFRED_PRIMARY_KEY),
         "ingestion_log": (INGESTION_LOG_SCHEMA, INGESTION_LOG_REQUIRED_COLS, INGESTION_LOG_PRIMARY_KEY),
         "ticker_mapping": (TICKER_MAPPING_SCHEMA, TICKER_MAPPING_REQUIRED_COLS, TICKER_MAPPING_PRIMARY_KEY),
     }
@@ -393,6 +415,7 @@ def save_schema_version(output_dir: str) -> None:
             "shares_outstanding": str(SHARES_OUTSTANDING_SCHEMA),
             "classifications": str(CLASSIFICATIONS_SCHEMA),
             "macro": str(MACRO_SCHEMA),
+            "macro_alfred": str(MACRO_ALFRED_SCHEMA),
             "ingestion_log": str(INGESTION_LOG_SCHEMA),
             "ticker_mapping": str(TICKER_MAPPING_SCHEMA),
         },
