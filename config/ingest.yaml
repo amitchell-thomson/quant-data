@@ -1,7 +1,8 @@
-data_root: "srv/data"
+data_root: "/srv/data"
 date_ranges:
-  default_start: 1985-01-01
+  default_start: "1985-01-01"
   default_end: null
 logging:
-  ingestion_log_path: "_meta/ingestion_log.parquet"
+  ingestion_log_path: "_meta/ingestion-log.parquet"
   log_level: "INFO"
+

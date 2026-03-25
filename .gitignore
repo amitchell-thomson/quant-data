@@ -36,6 +36,7 @@ ENV/
 
 # Environment variables
 .env
+.envrc
 
 # Jupyter
 .ipynb_checkpoints
@@ -66,3 +67,5 @@ _meta/schema-versions/*.json
 
 # Keep directory structure but ignore data files
 !**/.gitkeep
+
+pyrightconfig.json
