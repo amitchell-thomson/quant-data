@@ -39,14 +39,13 @@ def validate_dataframe(df, schema, required_cols, primary_key) -> pd.DataFrame:
 
     Returns a df with the required columns, matching the schema, and deduplicated by primary key.
     """
-    # Check required columns are present, print which are missing
-    if sorted(df.columns) != sorted(required_cols):
-        missing_cols = set(required_cols) - set(df.columns)
-        extra_cols = set(df.columns) - set(required_cols)
-        raise ValueError(f"DataFrame columns do not match required columns. Missing: {missing_cols}, Extra: {extra_cols}")
+    # Check required columns are present, print which are missing (silently add extra columns )
+    if missing_cols := set(required_cols) - set(df.columns):
+        raise ValueError(f"DataFrame columns do not match required columns. Missing: {missing_cols}")
 
     # Cast columns to correct types
     try:
+        df = df[required_cols]
         table = pa.Table.from_pandas(df, schema=schema)
         df = table.to_pandas()
     except Exception as e:
