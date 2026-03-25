@@ -12,12 +12,9 @@ equities:
       ret:      float64  # total return including dividends
       retx:     float64  # ex-dividend return (price appreciation only)
       prc:      float64  # closing price (negative = bid/ask midpoint used)
-      altprc:   float64  # fallback price when standard price unavailable
       vol:      float64  # daily trading volume
       shrout:   float64  # shares outstanding (thousands)
       cfacshr:  float64  # cumulative share adjustment factor for splits
-      exchcd:   int16    # exchange code (1=NYSE, 2=AMEX, 3=NASDAQ)
-      shrcd:    int16    # share code (10/11=ordinary common stock)
 
   events:
     provider: wrds

@@ -1,4 +1,7 @@
 wrds:
+  host: wrds-pgdata.wharton.upenn.edu
+  port: 9737
+  dbname: wrds
   timeout: 60
   max_retries: 3
   retry_backoff_factor: 2.0
