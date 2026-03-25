@@ -33,7 +33,7 @@ def load_schema(dataset_key: str, include_alfred: bool = False) -> tuple[pa.Sche
     return schema, required_cols, primary_key
 
 
-def validate_dataframe(df, schema, required_cols, primary_key) -> pd.DataFrame:
+def validate_dataframe(df, schema: pa.Schema, required_cols: list, primary_key: list) -> pd.DataFrame:
     """
     Enforce schema, deduplicate by primary key.
 
@@ -54,6 +54,3 @@ def validate_dataframe(df, schema, required_cols, primary_key) -> pd.DataFrame:
     # Deduplicate by primary key
     df = df.drop_duplicates(subset=primary_key, keep="last")
     return df
-
-
-print(load_schema("equities.daily"))
