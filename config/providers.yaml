@@ -1,0 +1,12 @@
+wrds:
+  timeout: 60
+  max_retries: 3
+  retry_backoff_factor: 2.0
+
+fred:
+  base_url: "https://api.stlouisfed.org/fred"
+  timeout: 30
+  max_retries: 3
+  retry_backoff_factor: 2.0
+  rate_limit:
+    requests_per_minute: 120
