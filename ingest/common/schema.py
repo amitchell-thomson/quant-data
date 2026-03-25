@@ -1,3 +1,4 @@
+import pandas as pd
 import pyarrow as pa
 
 from .utils import _get_dataset, _load_config
@@ -14,7 +15,7 @@ TYPE_MAP = {
 }
 
 
-def load_schema(dataset_key: str) -> tuple[pa.Schema, list[str], list[str]]:
+def load_schema(dataset_key: str, include_alfred: bool = False) -> tuple[pa.Schema, list[str], list[str]]:
     """
     Takes input of dataset_key of the form "equities.daily".
 
@@ -23,6 +24,8 @@ def load_schema(dataset_key: str) -> tuple[pa.Schema, list[str], list[str]]:
     config = _load_config("datasets")
     dataset = _get_dataset(config, dataset_key)
     list_schema = [(name, TYPE_MAP[dtype]) for name, dtype in dataset["columns"].items()]
+    if include_alfred:
+        list_schema.extend([(name, TYPE_MAP[dtype]) for name, dtype in dataset["alfred_columns"].items()])
     schema = pa.schema(list_schema)
     required_cols = list(dataset["columns"].keys())
     primary_key = dataset["primary_key"]
@@ -30,11 +33,28 @@ def load_schema(dataset_key: str) -> tuple[pa.Schema, list[str], list[str]]:
     return schema, required_cols, primary_key
 
 
-def validate_dataframe(df, schema, required_cols, primary_key):
+def validate_dataframe(df, schema, required_cols, primary_key) -> pd.DataFrame:
     """
     Enforce schema, deduplicate by primary key.
+
+    Returns a df with the required columns, matching the schema, and deduplicated by primary key.
     """
-    ...
+    # Check required columns are present, print which are missing
+    if sorted(df.columns) != sorted(required_cols):
+        missing_cols = set(required_cols) - set(df.columns)
+        extra_cols = set(df.columns) - set(required_cols)
+        raise ValueError(f"DataFrame columns do not match required columns. Missing: {missing_cols}, Extra: {extra_cols}")
+
+    # Cast columns to correct types
+    try:
+        table = pa.Table.from_pandas(df, schema=schema)
+        df = table.to_pandas()
+    except Exception as e:
+        raise ValueError(f"Error casting DataFrame to schema: {e}")
+
+    # Deduplicate by primary key
+    df = df.drop_duplicates(subset=primary_key, keep="last")
+    return df
 
 
 print(load_schema("equities.daily"))
