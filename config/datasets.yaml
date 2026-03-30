@@ -40,7 +40,6 @@ equities:
       dlstcd:   int16    # delisting code - reason for delisting
       dlret:    float64  # delisting return (apply on dlstdt to avoid survivorship bias)
       dlprc:    float64  # last available price
-      dlvol:    float64  # last available volume
 
   names:
     provider: wrds
@@ -50,7 +49,6 @@ equities:
     columns:
       permno:    int32   # permanent security identifier
       namedt:    date32  # date this name record became active
-      nameendt:  date32  # date this name record expired
       ticker:    string
       comnam:    string  # company name
       exchcd:    int16   # exchange code

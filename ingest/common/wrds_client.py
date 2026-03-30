@@ -7,6 +7,7 @@ import psycopg2
 from .base_client import BaseClient
 from .provider import register
 
+
 @register("wrds")
 class WRDSClient(BaseClient):
     def __init__(self, provider_config: dict):
@@ -60,7 +61,7 @@ if __name__ == "__main__":
     from ingest.common.utils import _get_dataset, _load_config
 
     providers = _load_config("providers")
-    dataset = _get_dataset("equities.daily")
+    dataset = _get_dataset("equities.names")
 
     client = WRDSClient(providers["wrds"])
     df = client.fetch(dataset, year=1993)
