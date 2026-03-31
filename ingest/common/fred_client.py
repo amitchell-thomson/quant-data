@@ -1,6 +1,5 @@
 import os
 import time
-from datetime import date
 
 import pandas as pd
 import requests
@@ -45,19 +44,38 @@ class FREDClient(BaseClient):
 
         raise RuntimeError("unreachable")
 
+    def _fetch_observations(self, params: dict) -> list[dict]:
+        """Fetch all observations for params, handling FRED's 100k-row offset pagination."""
+        all_obs: list[dict] = []
+        offset = 0
+        while True:
+            data = self._get("/series/observations", {**params, "limit": 100_000, "offset": offset})
+            all_obs.extend(data["observations"])
+            if offset + data["limit"] >= data["count"]:
+                break
+            offset += data["limit"]
+        return all_obs
+
+    def _fetch_vintage_observations(self, params: dict) -> list[dict]:
+        """Fetch ALFRED vintage data, chunking into realtime windows of ≤2000 vintages."""
+        vintages = self._get("/series/vintagedates", {"series_id": params["series_id"]})["vintage_dates"]
+        all_obs: list[dict] = []
+        for i in range(0, len(vintages), 2000):
+            batch = vintages[i : i + 2000]
+            batch_params = {**params, "realtime_start": batch[0], "realtime_end": batch[-1]}
+            all_obs.extend(self._fetch_observations(batch_params))
+        return all_obs
+
     def _fetch_series(self, series_id: str, meta: dict, start: str | None, end: str | None, realtime: bool) -> pd.DataFrame:
         params: dict = {"series_id": series_id}
         if start:
             params["observation_start"] = start
         if end:
             params["observation_end"] = end
-        if realtime:
-            params["realtime_start"] = "1776-07-04"        # FRED's beginning of time
-            params["realtime_end"] = date.today().isoformat()  # all vintages up to today
 
-        data = self._get("/series/observations", params)
-        df = pd.DataFrame(data["observations"])
+        observations = self._fetch_vintage_observations(params) if realtime else self._fetch_observations(params)
 
+        df = pd.DataFrame(observations)
         df = df[df["value"] != "."].copy()  # FRED uses "." for missing
         df["value"] = pd.to_numeric(df["value"])
         df["date"] = pd.to_datetime(df["date"])
