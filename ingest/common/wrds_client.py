@@ -58,10 +58,10 @@ class WRDSClient(BaseClient):
 
 
 if __name__ == "__main__":
-    from ingest.common.utils import _get_dataset, _load_config
+    from ingest.common.config_utils import _get_dataset, _load_config
 
     providers = _load_config("providers")
-    dataset = _get_dataset("equities.names")
+    dataset = _get_dataset("index_membership.sp500")
 
     client = WRDSClient(providers["wrds"])
     df = client.fetch(dataset, year=1993)

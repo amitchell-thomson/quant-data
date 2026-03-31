@@ -97,7 +97,7 @@ class FREDClient(BaseClient):
 
 
 if __name__ == "__main__":
-    from ingest.common.utils import _get_dataset, _load_config
+    from ingest.common.config_utils import _get_dataset, _load_config
 
     providers = _load_config("providers")
     dataset = _get_dataset("macro.rates")

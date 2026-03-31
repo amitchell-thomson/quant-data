@@ -9,7 +9,7 @@ Usage:
 import sys
 import warnings
 
-from ingest.common.utils import _load_config
+from ingest.common.config_utils import _load_config
 from ingest.common.wrds_client import WRDSClient
 
 

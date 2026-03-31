@@ -7,14 +7,14 @@ equities:
     start_year: 1985
     primary_key: [permno, date]
     columns:
-      permno:   int32    # permanent security identifier - never reused
-      date:     date32
-      ret:      float64  # total return including dividends
-      retx:     float64  # ex-dividend return (price appreciation only)
-      prc:      float64  # closing price (negative = bid/ask midpoint used)
-      vol:      float64  # daily trading volume
-      shrout:   float64  # shares outstanding (thousands)
-      cfacshr:  float64  # cumulative share adjustment factor for splits
+      permno: int32 # permanent security identifier - never reused
+      date: date32
+      ret: float64 # total return including dividends
+      retx: float64 # ex-dividend return (price appreciation only)
+      prc: float64 # closing price (negative = bid/ask midpoint used)
+      vol: float64 # daily trading volume
+      shrout: float64 # shares outstanding (thousands)
+      cfacshr: float64 # cumulative share adjustment factor for splits
 
   events:
     provider: wrds
@@ -22,12 +22,12 @@ equities:
     output: equities/events/events.parquet
     primary_key: [permno, date, distcd]
     columns:
-      permno:   int32    # permanent security identifier
-      date:     date32
-      distcd:   int16    # distribution code - encodes event type
-      divamt:   float64  # dividend amount per share
-      facpr:    float64  # price adjustment factor
-      facshr:   float64  # share adjustment factor
+      permno: int32 # permanent security identifier
+      date: date32
+      distcd: int16 # distribution code - encodes event type
+      divamt: float64 # dividend amount per share
+      facpr: float64 # price adjustment factor
+      facshr: float64 # share adjustment factor
 
   delistings:
     provider: wrds
@@ -35,11 +35,11 @@ equities:
     output: equities/delistings/delistings.parquet
     primary_key: [permno, dlstdt]
     columns:
-      permno:   int32    # permanent security identifier
-      dlstdt:   date32   # delisting date
-      dlstcd:   int16    # delisting code - reason for delisting
-      dlret:    float64  # delisting return (apply on dlstdt to avoid survivorship bias)
-      dlprc:    float64  # last available price
+      permno: int32 # permanent security identifier
+      dlstdt: date32 # delisting date
+      dlstcd: int16 # delisting code - reason for delisting
+      dlret: float64 # delisting return (apply on dlstdt to avoid survivorship bias)
+      dlprc: float64 # last available price
 
   names:
     provider: wrds
@@ -47,14 +47,14 @@ equities:
     output: equities/names/names.parquet
     primary_key: [permno, namedt]
     columns:
-      permno:    int32   # permanent security identifier
-      namedt:    date32  # date this name record became active
-      ticker:    string
-      comnam:    string  # company name
-      exchcd:    int16   # exchange code
-      shrcd:     int16   # share code
-      siccd:     int16   # SIC industry code
-      ncusip:    string  # CUSIP identifier
+      permno: int32 # permanent security identifier
+      namedt: date32 # date this name record became active
+      ticker: string
+      comnam: string # company name
+      exchcd: int16 # exchange code
+      shrcd: int16 # share code
+      siccd: int16 # SIC industry code
+      ncusip: string # CUSIP identifier
 
   fundamentals_annual:
     provider: wrds
@@ -62,32 +62,32 @@ equities:
     output: equities/fundamentals_annual/funda.parquet
     primary_key: [gvkey, datadate, indfmt]
     columns:
-      gvkey:     string  # Compustat permanent company identifier
-      datadate:  date32  # fiscal year end date
-      fyear:     int16   # fiscal year
-      indfmt:    string  # industry format (INDL=industrial, FS=financial services)
-      sale:      float64 # net sales / revenues
-      cogs:      float64 # cost of goods sold
-      xsga:      float64 # SG&A expense
-      ebitda:    float64
-      ebit:      float64
-      nopi:      float64 # non-operating income
-      pi:        float64 # pre-tax income
-      ni:        float64 # net income
-      at:        float64 # total assets
-      lt:        float64 # total liabilities
-      ceq:       float64 # common equity
-      dltt:      float64 # long-term debt
-      dlc:       float64 # debt in current liabilities
-      che:       float64 # cash and short-term investments
-      rect:      float64 # receivables
-      invt:      float64 # inventories
-      oancf:     float64 # operating cash flow
-      ivncf:     float64 # investing cash flow
-      fincf:     float64 # financing cash flow
-      capx:      float64 # capital expenditures
-      csho:      float64 # common shares outstanding
-      prcc_f:    float64 # fiscal year-end closing price
+      gvkey: string # Compustat permanent company identifier
+      datadate: date32 # fiscal year end date
+      fyear: int16 # fiscal year
+      indfmt: string # industry format (INDL=industrial, FS=financial services)
+      sale: float64 # net sales / revenues
+      cogs: float64 # cost of goods sold
+      xsga: float64 # SG&A expense
+      ebitda: float64
+      ebit: float64
+      nopi: float64 # non-operating income
+      pi: float64 # pre-tax income
+      ni: float64 # net income
+      at: float64 # total assets
+      lt: float64 # total liabilities
+      ceq: float64 # common equity
+      dltt: float64 # long-term debt
+      dlc: float64 # debt in current liabilities
+      che: float64 # cash and short-term investments
+      rect: float64 # receivables
+      invt: float64 # inventories
+      oancf: float64 # operating cash flow
+      ivncf: float64 # investing cash flow
+      fincf: float64 # financing cash flow
+      capx: float64 # capital expenditures
+      csho: float64 # common shares outstanding
+      prcc_f: float64 # fiscal year-end closing price
 
   fundamentals_quarterly:
     provider: wrds
@@ -95,33 +95,33 @@ equities:
     output: equities/fundamentals_quarterly/fundq.parquet
     primary_key: [gvkey, datadate, indfmt]
     columns:
-      gvkey:     string  # Compustat permanent company identifier
-      datadate:  date32  # fiscal quarter end date
-      fyearq:    int16   # fiscal year
-      fqtr:      int16   # fiscal quarter
-      indfmt:    string  # industry format
-      saleq:     float64 # quarterly net sales
-      cogsq:     float64 # quarterly cost of goods sold
-      xsgaq:     float64 # quarterly SG&A
-      niq:       float64 # quarterly net income
-      atq:       float64 # total assets
-      ltq:       float64 # total liabilities
-      ceqq:      float64 # common equity
-      oancfq:    float64 # quarterly operating cash flow
-      capxq:     float64 # quarterly capex
-      cshoq:     float64 # common shares outstanding
-      prccq:     float64 # quarter-end closing price
+      gvkey: string # Compustat permanent company identifier
+      datadate: date32 # fiscal quarter end date
+      fyearq: int16 # fiscal year
+      fqtr: int16 # fiscal quarter
+      indfmt: string # industry format
+      saleq: float64 # quarterly net sales
+      cogsq: float64 # quarterly cost of goods sold
+      xsgaq: float64 # quarterly SG&A
+      niq: float64 # quarterly net income
+      atq: float64 # total assets
+      ltq: float64 # total liabilities
+      ceqq: float64 # common equity
+      oancfq: float64 # quarterly operating cash flow
+      capxq: float64 # quarterly capex
+      cshoq: float64 # common shares outstanding
+      prccq: float64 # quarter-end closing price
 
 index_membership:
   sp500:
     provider: wrds
     source: crsp.msp500list
     output: index_membership/sp500.parquet
-    primary_key: [permno, start_dt]
+    primary_key: [permno, start]
     columns:
-      permno:     int32  # permanent security identifier
-      start_dt:   date32 # date added to index
-      ending_dt:  date32 # date removed from index (null = current member)
+      permno: int32 # permanent security identifier
+      start: date32 # date added to index
+      ending: date32 # date removed from index (null = current member)
 
 fixed_income:
   trace:
@@ -132,15 +132,15 @@ fixed_income:
     start_year: 2002
     primary_key: [cusip_id, trd_exctn_dt, trd_exctn_tm, entrd_vol_qt, rptd_pr]
     columns:
-      cusip_id:       string  # bond CUSIP
-      trd_exctn_dt:   date32  # trade execution date
-      trd_exctn_tm:   string  # trade execution time
-      entrd_vol_qt:   float64 # par value traded
-      rptd_pr:        float64 # reported price (% of par)
-      yld_pt:         float64 # yield at time of trade
-      side:           string  # B=buy, S=sell
-      asof_cd:        string  # null=same-day, A=late, W=when-issued
-      trc_st:         string  # trade status (T=valid, C=cancel, R=reversal)
+      cusip_id: string # bond CUSIP
+      trd_exctn_dt: date32 # trade execution date
+      trd_exctn_tm: string # trade execution time
+      entrd_vol_qt: float64 # par value traded
+      rptd_pr: float64 # reported price (% of par)
+      yld_pt: float64 # yield at time of trade
+      side: string # B=buy, S=sell
+      asof_cd: string # null=same-day, A=late, W=when-issued
+      trc_st: string # trade status (T=valid, C=cancel, R=reversal)
 
   fisd:
     provider: wrds
@@ -148,19 +148,19 @@ fixed_income:
     output: fixed_income/fisd.parquet
     primary_key: [issue_id]
     columns:
-      issue_id:        string  # Mergent issue identifier
-      issuer_id:       string  # Mergent issuer identifier
-      cusip:           string
-      offering_date:   date32
-      maturity:        date32
-      coupon:          float64
-      principal_amt:   float64 # offering amount
-      sic_code:        string
-      bond_type:       string
-      security_level:  string  # SENIOR, SUBORDINATED, etc.
-      callable:        string  # Y/N
-      convertible:     string  # Y/N
-      rule_144a:       string  # Y/N — private placement
+      issue_id: string # Mergent issue identifier
+      issuer_id: string # Mergent issuer identifier
+      cusip: string
+      offering_date: date32
+      maturity: date32
+      coupon: float64
+      principal_amt: float64 # offering amount
+      sic_code: string
+      bond_type: string
+      security_level: string # SENIOR, SUBORDINATED, etc.
+      callable: string # Y/N
+      convertible: string # Y/N
+      rule_144a: string # Y/N — private placement
 
   treasuries:
     provider: wrds
@@ -170,16 +170,16 @@ fixed_income:
     start_year: 1961
     primary_key: [kycrspid, caldt]
     columns:
-      kycrspid:   string  # CRSP treasury identifier
-      caldt:      date32  # calendar date
-      tdyld:      float64 # yield to maturity
-      tdprc:      float64 # clean price
-      tdduratn:   float64 # modified duration
-      tdaccint:   float64 # accrued interest
-      tdbid:      float64 # bid price
-      tdask:      float64 # ask price
-      tdmat:      date32  # maturity date
-      tdnomprc:   float64 # full (dirty) price
+      kycrspid: string # CRSP treasury identifier
+      caldt: date32 # calendar date
+      tdyld: float64 # yield to maturity
+      tdprc: float64 # clean price
+      tdduratn: float64 # modified duration
+      tdaccint: float64 # accrued interest
+      tdbid: float64 # bid price
+      tdask: float64 # ask price
+      tdmat: date32 # maturity date
+      tdnomprc: float64 # full (dirty) price
 
 options:
   daily:
@@ -190,20 +190,20 @@ options:
     start_year: 1996
     primary_key: [secid, date, exdate, cp_flag, strike_price]
     columns:
-      secid:            int32   # OptionMetrics security identifier
-      date:             date32  # quote date
-      exdate:           date32  # expiration date
-      cp_flag:          string  # C=call, P=put
-      strike_price:     float64
-      best_bid:         float64
-      best_offer:       float64
-      volume:           float64
-      open_interest:    float64
-      impl_volatility:  float64 # black-scholes implied vol
-      delta:            float64
-      gamma:            float64
-      vega:             float64
-      theta:            float64
+      secid: int32 # OptionMetrics security identifier
+      date: date32 # quote date
+      exdate: date32 # expiration date
+      cp_flag: string # C=call, P=put
+      strike_price: float64
+      best_bid: float64
+      best_offer: float64
+      volume: float64
+      open_interest: float64
+      impl_volatility: float64 # black-scholes implied vol
+      delta: float64
+      gamma: float64
+      vega: float64
+      theta: float64
 
 fx:
   spot:
@@ -211,24 +211,24 @@ fx:
     output: fx/fx.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     series:
-      DEXUSEU:  { name: usd_eur, description: US Dollar to Euro }
-      DEXJPUS:  { name: usd_jpy, description: Japanese Yen to US Dollar }
-      DEXCHUS:  { name: usd_cny, description: Chinese Yuan to US Dollar }
-      DEXCAUS:  { name: usd_cad, description: Canadian Dollar to US Dollar }
-      DEXBZUS:  { name: usd_brl, description: Brazilian Real to US Dollar }
-      DEXMXUS:  { name: usd_mxn, description: Mexican Peso to US Dollar }
-      DEXSFUS:  { name: usd_chf, description: Swiss Franc to US Dollar }
-      DEXNOUS:  { name: usd_nok, description: Norwegian Krone to US Dollar }
-      DEXDNUS:  { name: usd_dkk, description: Danish Krone to US Dollar }
-      DEXHKUS:  { name: usd_hkd, description: Hong Kong Dollar to US Dollar }
-      DEXINUS:  { name: usd_inr, description: Indian Rupee to US Dollar }
-      DEXKOUS:  { name: usd_krw, description: South Korean Won to US Dollar }
+      DEXUSEU: { name: usd_eur, description: US Dollar to Euro }
+      DEXJPUS: { name: usd_jpy, description: Japanese Yen to US Dollar }
+      DEXCHUS: { name: usd_cny, description: Chinese Yuan to US Dollar }
+      DEXCAUS: { name: usd_cad, description: Canadian Dollar to US Dollar }
+      DEXBZUS: { name: usd_brl, description: Brazilian Real to US Dollar }
+      DEXMXUS: { name: usd_mxn, description: Mexican Peso to US Dollar }
+      DEXSFUS: { name: usd_chf, description: Swiss Franc to US Dollar }
+      DEXNOUS: { name: usd_nok, description: Norwegian Krone to US Dollar }
+      DEXDNUS: { name: usd_dkk, description: Danish Krone to US Dollar }
+      DEXHKUS: { name: usd_hkd, description: Hong Kong Dollar to US Dollar }
+      DEXINUS: { name: usd_inr, description: Indian Rupee to US Dollar }
+      DEXKOUS: { name: usd_krw, description: South Korean Won to US Dollar }
 
 commodities:
   spot:
@@ -236,48 +236,68 @@ commodities:
     output: commodities/commodities.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     series:
-      DCOILWTICO:        { name: wti_crude,    description: WTI Crude Oil (USD/barrel) }
-      DCOILBRENTEU:      { name: brent_crude,  description: Brent Crude Oil (USD/barrel) }
-      GOLDAMGBD228NLBM:  { name: gold,         description: Gold Fix Price (USD/troy oz) }
-      DHHNGSP:           { name: natural_gas,  description: Henry Hub Natural Gas (USD/MMBtu) }
-      PSILVER:           { name: silver,       description: Silver Fix Price (USD/troy oz) }
-      PCOPPUSDM:         { name: copper,       description: Copper Price (USD/metric ton) }
+      DCOILWTICO: { name: wti_crude, description: WTI Crude Oil (USD/barrel) }
+      DCOILBRENTEU:
+        { name: brent_crude, description: Brent Crude Oil (USD/barrel) }
+      GOLDAMGBD228NLBM:
+        { name: gold, description: Gold Fix Price (USD/troy oz) }
+      DHHNGSP:
+        { name: natural_gas, description: Henry Hub Natural Gas (USD/MMBtu) }
+      PSILVER: { name: silver, description: Silver Fix Price (USD/troy oz) }
+      PCOPPUSDM: { name: copper, description: Copper Price (USD/metric ton) }
 
 macro:
   rates:
-    provider: fred 
+    provider: fred
     output: macro/rates.parquet
     alfred_output: macro/rates_alfred.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     alfred_columns:
-      realtime_start:  date32  # first date this vintage was the latest value
-      realtime_end:    date32  # last date this vintage was the latest value
+      realtime_start: date32 # first date this vintage was the latest value
+      realtime_end: date32 # last date this vintage was the latest value
     series:
-      DGS3MO:        { name: us_3m_treasury,    description: 3-Month Treasury Constant Maturity }
-      DGS2:          { name: us_2y_treasury,    description: 2-Year Treasury Constant Maturity }
-      DGS5:          { name: us_5y_treasury,    description: 5-Year Treasury Constant Maturity }
-      DGS10:         { name: us_10y_treasury,   description: 10-Year Treasury Constant Maturity }
-      DGS30:         { name: us_30y_treasury,   description: 30-Year Treasury Constant Maturity }
-      FEDFUNDS:      { name: fed_funds,         description: Federal Funds Effective Rate }
-      T10Y2Y:        { name: yield_curve_10_2,  description: 10Y minus 2Y Treasury Spread }
-      T10Y3M:        { name: yield_curve_10_3m, description: 10Y minus 3M Treasury Spread }
-      MORTGAGE30US:  { name: mortgage_30y,      description: 30-Year Fixed Mortgage Rate }
-      AAA:           { name: corp_aaa,          description: Moody's AAA Corporate Bond Yield }
-      BAA:           { name: corp_baa,          description: Moody's BAA Corporate Bond Yield }
-      BAA10Y:        { name: baa_spread,        description: BAA minus 10Y Treasury Spread }
-      BAMLH0A0HYM2:  { name: hy_spread,         description: ICE BofA HY OAS Spread }
+      DGS3MO:
+        {
+          name: us_3m_treasury,
+          description: 3-Month Treasury Constant Maturity,
+        }
+      DGS2:
+        { name: us_2y_treasury, description: 2-Year Treasury Constant Maturity }
+      DGS5:
+        { name: us_5y_treasury, description: 5-Year Treasury Constant Maturity }
+      DGS10:
+        {
+          name: us_10y_treasury,
+          description: 10-Year Treasury Constant Maturity,
+        }
+      DGS30:
+        {
+          name: us_30y_treasury,
+          description: 30-Year Treasury Constant Maturity,
+        }
+      FEDFUNDS: { name: fed_funds, description: Federal Funds Effective Rate }
+      T10Y2Y:
+        { name: yield_curve_10_2, description: 10Y minus 2Y Treasury Spread }
+      T10Y3M:
+        { name: yield_curve_10_3m, description: 10Y minus 3M Treasury Spread }
+      MORTGAGE30US:
+        { name: mortgage_30y, description: 30-Year Fixed Mortgage Rate }
+      AAA: { name: corp_aaa, description: Moody's AAA Corporate Bond Yield }
+      BAA: { name: corp_baa, description: Moody's BAA Corporate Bond Yield }
+      BAA10Y: { name: baa_spread, description: BAA minus 10Y Treasury Spread }
+      BAMLH0A0HYM2: { name: hy_spread, description: ICE BofA HY OAS Spread }
 
   inflation:
     provider: fred
@@ -285,23 +305,27 @@ macro:
     alfred_output: macro/inflation_alfred.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     alfred_columns:
-      realtime_start:  date32
-      realtime_end:    date32
+      realtime_start: date32
+      realtime_end: date32
     series:
-      CPIAUCSL:  { name: cpi_headline,   description: CPI All Urban Consumers (SA) }
-      CPILFESL:  { name: cpi_core,       description: Core CPI ex Food & Energy (SA) }
-      PCEPI:     { name: pce_headline,   description: PCE Price Index }
-      PCEPILFE:  { name: pce_core,       description: Core PCE ex Food & Energy }
-      PPIACO:    { name: ppi,            description: Producer Price Index All Commodities }
-      T5YIE:     { name: breakeven_5y,   description: 5-Year Breakeven Inflation Rate }
-      T10YIE:    { name: breakeven_10y,  description: 10-Year Breakeven Inflation Rate }
-      T5YIFR:    { name: breakeven_5y5y, description: 5-Year 5-Year Forward Breakeven }
+      CPIAUCSL:
+        { name: cpi_headline, description: CPI All Urban Consumers (SA) }
+      CPILFESL: { name: cpi_core, description: Core CPI ex Food & Energy (SA) }
+      PCEPI: { name: pce_headline, description: PCE Price Index }
+      PCEPILFE: { name: pce_core, description: Core PCE ex Food & Energy }
+      PPIACO: { name: ppi, description: Producer Price Index All Commodities }
+      T5YIE:
+        { name: breakeven_5y, description: 5-Year Breakeven Inflation Rate }
+      T10YIE:
+        { name: breakeven_10y, description: 10-Year Breakeven Inflation Rate }
+      T5YIFR:
+        { name: breakeven_5y5y, description: 5-Year 5-Year Forward Breakeven }
 
   growth:
     provider: fred
@@ -309,22 +333,31 @@ macro:
     alfred_output: macro/growth_alfred.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     alfred_columns:
-      realtime_start:  date32
-      realtime_end:    date32
+      realtime_start: date32
+      realtime_end: date32
     series:
-      GDP:      { name: gdp_nominal,   description: Nominal GDP (Billions USD, SAAR) }
-      GDPC1:    { name: gdp_real,      description: Real GDP (Billions Chained 2017 USD, SAAR) }
-      GDPPOT:   { name: gdp_potential, description: Real Potential GDP }
-      INDPRO:   { name: indpro,        description: Industrial Production Index }
-      CFNAI:    { name: cfnai,         description: Chicago Fed National Activity Index }
-      UMCSENT:  { name: sentiment,     description: University of Michigan Consumer Sentiment }
-      VIXCLS:   { name: vix,           description: CBOE Volatility Index }
+      GDP: { name: gdp_nominal, description: Nominal GDP (Billions USD, SAAR) }
+      GDPC1:
+        {
+          name: gdp_real,
+          description: Real GDP (Billions Chained 2017 USD,
+          SAAR),
+        }
+      GDPPOT: { name: gdp_potential, description: Real Potential GDP }
+      INDPRO: { name: indpro, description: Industrial Production Index }
+      CFNAI: { name: cfnai, description: Chicago Fed National Activity Index }
+      UMCSENT:
+        {
+          name: sentiment,
+          description: University of Michigan Consumer Sentiment,
+        }
+      VIXCLS: { name: vix, description: CBOE Volatility Index }
 
   employment:
     provider: fred
@@ -332,22 +365,26 @@ macro:
     alfred_output: macro/employment_alfred.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     alfred_columns:
-      realtime_start:  date32
-      realtime_end:    date32
+      realtime_start: date32
+      realtime_end: date32
     series:
-      UNRATE:   { name: unemployment,    description: Unemployment Rate (SA) }
-      U6RATE:   { name: u6,              description: U-6 Underemployment Rate }
-      PAYEMS:   { name: nfp,             description: Total Nonfarm Payrolls (SA, Thousands) }
-      ICSA:     { name: jobless_claims,  description: Initial Jobless Claims (SA) }
-      CIVPART:  { name: lfpr,            description: Labor Force Participation Rate }
-      AHETPI:   { name: hourly_earnings, description: Avg Hourly Earnings All Employees }
-      JTSJOL:   { name: jolts,           description: Job Openings (JOLTS, Thousands) }
+      UNRATE: { name: unemployment, description: Unemployment Rate (SA) }
+      U6RATE: { name: u6, description: U-6 Underemployment Rate }
+      PAYEMS: { name: nfp, description: Total Nonfarm Payrolls (SA, Thousands) }
+      ICSA: { name: jobless_claims, description: Initial Jobless Claims (SA) }
+      CIVPART: { name: lfpr, description: Labor Force Participation Rate }
+      AHETPI:
+        {
+          name: hourly_earnings,
+          description: Avg Hourly Earnings All Employees,
+        }
+      JTSJOL: { name: jolts, description: Job Openings (JOLTS, Thousands) }
 
   liquidity:
     provider: fred
@@ -355,15 +392,23 @@ macro:
     alfred_output: macro/liquidity_alfred.parquet
     primary_key: [series_code, date]
     columns:
-      series_code:  string
-      date:         date32
-      value:        float64
-      series_name:  string
-      category:     string
+      series_code: string
+      date: date32
+      value: float64
+      series_name: string
+      category: string
     alfred_columns:
-      realtime_start:  date32
-      realtime_end:    date32
+      realtime_start: date32
+      realtime_end: date32
     series:
-      WALCL:  { name: fed_balance_sheet, description: Fed Total Assets (Millions USD) }
-      M2SL:   { name: m2,               description: M2 Money Supply (Billions USD, SA) }
-      NFCI:   { name: nfci,             description: Chicago Fed National Financial Conditions Index }
+      WALCL:
+        {
+          name: fed_balance_sheet,
+          description: Fed Total Assets (Millions USD),
+        }
+      M2SL: { name: m2, description: M2 Money Supply (Billions USD, SA) }
+      NFCI:
+        {
+          name: nfci,
+          description: Chicago Fed National Financial Conditions Index,
+        }
