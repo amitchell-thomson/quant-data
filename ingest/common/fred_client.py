@@ -1,4 +1,5 @@
 import os
+import re
 import time
 
 import pandas as pd
@@ -7,6 +8,17 @@ from tenacity import Retrying, stop_after_attempt, wait_exponential
 
 from .base_client import BaseClient
 from .provider import register
+
+
+def _redact_key(exc: "requests.HTTPError") -> "requests.HTTPError":
+    """Return the same error with any api_key value replaced, keeping .response intact.
+
+    `.response` has to survive: callers branch on the status code to decide whether a series was
+    withdrawn or something worse actually failed.
+    """
+    message = re.sub(r"(api_key=)[^&\s]+", r"\1<redacted>", str(exc))
+    redacted = requests.HTTPError(message, response=exc.response)
+    return redacted
 
 
 @register("fred")
@@ -38,7 +50,13 @@ class FREDClient(BaseClient):
         ):
             with attempt:
                 response = self._session.get(url, params=full_params, timeout=self._config["timeout"])
-                response.raise_for_status()  # raises HTTPError on 4xx/ 5xx status codes
+                try:
+                    response.raise_for_status()  # raises HTTPError on 4xx/ 5xx status codes
+                except requests.HTTPError as exc:
+                    # requests puts the full request URL in the message, and the URL carries the
+                    # API key. That message then travels into logs, tracebacks and the ingestion
+                    # log parquet, so the key is stripped before the error is allowed to escape.
+                    raise _redact_key(exc) from None
                 self._last_request = time.monotonic()
                 return response.json()
 
