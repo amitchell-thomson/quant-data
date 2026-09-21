@@ -91,8 +91,31 @@ class FREDClient(BaseClient):
     def fetch(
         self, dataset_cfg: dict, year: int | None = None, start: str | None = None, end: str | None = None, realtime: bool = False
     ) -> pd.DataFrame:
-        """Fetch all series in dataset.cfg. year is ignored - FRED data is not year-partitioned"""
-        frames = [self._fetch_series(series_id, meta, start, end, realtime) for series_id, meta in dataset_cfg["series"].items()]
+        """Fetch all series in dataset.cfg. year is ignored - FRED data is not year-partitioned.
+
+        A series that FRED has withdrawn is skipped with a warning rather than failing the whole
+        dataset. FRED retires series regularly — the London gold and silver fixings went this way —
+        and losing five good series because a sixth was discontinued is the wrong trade. Only a
+        dataset where *every* series fails is an error.
+        """
+        frames: list[pd.DataFrame] = []
+        skipped: list[str] = []
+        for series_id, meta in dataset_cfg["series"].items():
+            try:
+                frames.append(self._fetch_series(series_id, meta, start, end, realtime))
+            except requests.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else None
+                if status not in (400, 404):
+                    raise
+                skipped.append(series_id)
+                print(f"    skipping {series_id}: FRED returned {status} (series withdrawn?)")
+
+        if not frames:
+            raise RuntimeError(
+                f"every series failed for this dataset: {', '.join(skipped)}"
+            )
+        if skipped:
+            print(f"    {len(frames)} series fetched, {len(skipped)} skipped: {', '.join(skipped)}")
         return pd.DataFrame(pd.concat(frames, ignore_index=True))
 
 

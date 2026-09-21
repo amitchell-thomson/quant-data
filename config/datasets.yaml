@@ -107,8 +107,11 @@ equities:
       atq: float64 # total assets
       ltq: float64 # total liabilities
       ceqq: float64 # common equity
-      oancfq: float64 # quarterly operating cash flow
-      capxq: float64 # quarterly capex
+      # Compustat has no quarterly-only cash-flow items. oancfq/capxq do not exist in comp.fundq;
+      # the cash-flow statement is reported year-to-date, so these are cumulative within the
+      # fiscal year and must be differenced across quarters to recover a quarterly figure.
+      oancfy: float64 # operating cash flow, YEAR-TO-DATE
+      capxy: float64 # capital expenditure, YEAR-TO-DATE
       cshoq: float64 # common shares outstanding
       prccq: float64 # quarter-end closing price
 
@@ -245,12 +248,14 @@ commodities:
       DCOILWTICO: { name: wti_crude, description: WTI Crude Oil (USD/barrel) }
       DCOILBRENTEU:
         { name: brent_crude, description: Brent Crude Oil (USD/barrel) }
-      GOLDAMGBD228NLBM:
-        { name: gold, description: Gold Fix Price (USD/troy oz) }
       DHHNGSP:
         { name: natural_gas, description: Henry Hub Natural Gas (USD/MMBtu) }
-      PSILVER: { name: silver, description: Silver Fix Price (USD/troy oz) }
       PCOPPUSDM: { name: copper, description: Copper Price (USD/metric ton) }
+      # No gold or silver. FRED withdrew both: GOLDAMGBD228NLBM and PSILVER now return
+      # "The series does not exist", the London fixings having been discontinued, and the IMF
+      # P*USDM naming that covers copper has no gold or silver equivalent. FRED carries only
+      # indices and ETF volatility, not spot. If precious-metal spot is ever needed it has to
+      # come from somewhere else (EODHD, LBMA) rather than being re-added here.
 
 macro:
   rates:
