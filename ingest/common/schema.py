@@ -1,7 +1,7 @@
 import pandas as pd
 import pyarrow as pa
 
-from .utils import _get_dataset, _load_config
+from .config_utils import _get_dataset
 
 TYPE_MAP = {
     "int16": pa.int16(),
@@ -21,8 +21,7 @@ def load_schema(dataset_key: str, include_alfred: bool = False) -> tuple[pa.Sche
 
     Returns (schema, required_cols, primary_key) for a dataset key like "equities.daily".
     """
-    config = _load_config("datasets")
-    dataset = _get_dataset(config, dataset_key)
+    dataset = _get_dataset(dataset_key)
     list_schema = [(name, TYPE_MAP[dtype]) for name, dtype in dataset["columns"].items()]
     if include_alfred:
         list_schema.extend([(name, TYPE_MAP[dtype]) for name, dtype in dataset["alfred_columns"].items()])

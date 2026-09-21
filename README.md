@@ -1,375 +1,88 @@
-# Quant Data Ingestion Pipeline
+# quant-data
 
-A production-grade data ingestion system for financial market data from EODHD (End of Day Historical Data) and FRED (Federal Reserve Economic Data). Designed for survivorship-bias-safe, append-only data collection suitable for quantitative research and backtesting.
+Ingestion for WRDS and FRED. Pulls configured datasets and lands them as partitioned,
+append-only Parquet under a single data root.
 
-## Features
+## Licence boundary — read this first
 
-- **Survivorship-Bias-Safe**: Ingests data for all tickers (including delisted) based on historical S&P 500 membership
-- **Append-Only**: Immutable data storage with idempotent upserts (never silently overwrites raw data)
-- **Resilient**: Automatic retries with exponential backoff, rate limiting, and comprehensive error handling
-- **Reproducible**: Schema versioning, ingestion logs, and deterministic outputs
-- **Production-Ready**: Type hints, comprehensive logging, progress bars, dry-run mode
-- **Efficient**: Parallel downloads, Parquet compression, partitioned storage
+The WRDS subscription is **academic**. It permits **signal research, backtesting and validation.
+It does not permit live trading in the loop.** WRDS logs every query against the account username.
 
-## Data Sources
+The working pattern is:
 
-### From EODHD API
+> **Validate on WRDS. Trade on licence-clean live data.**
 
-1. **S&P 500 Membership**: Current constituents with sector/industry classifications
-2. **OHLCV Data**: Daily open/high/low/close/volume history (back to earliest available)
-3. **Corporate Actions**: Dividends and stock splits
-4. **Fundamentals**: 
-   - Annual and quarterly financial statements (income, balance sheet, cash flow)
-   - Key ratios and metrics (P/E, P/B, ROE, margins, etc.)
-   - Shares outstanding and market cap
-   - Company classifications
+This works because the expensive half is *history* and the cheap half is *today*. Everything under
+`wrds/` in the data root is research-only; anything intended for a live path must come from a
+licence-clean source (EODHD, a broker feed) and live outside that prefix. The consuming project
+(`nabla`) enforces this in code — `nabla.data.store` refuses to hand a `wrds/` path to anything
+declaring a live purpose.
 
-### From FRED API
+## Layout
 
-5. **Macroeconomic Data**: 800,000+ economic time series including:
-   - Interest rates (Treasury yields, Fed Funds, mortgage rates, corporate spreads)
-   - Inflation metrics (CPI, PCE, breakeven inflation)
-   - Economic growth (GDP, industrial production, sentiment)
-   - Labor market (unemployment, payrolls, jobless claims, wages)
-
-## Project Structure
+`data_root` is `/srv/data`, a dedicated NVMe (`/dev/nvme0n1p1`, ~457G). Paths are set per dataset
+in `config/datasets.yaml`:
 
 ```
-quant-data/
-├── config/
-│   └── ingest.yaml              # Configuration for data ingestion
-├── ingest/                       # Ingestion package
-│   ├── common/                   # Shared utilities
-│   │   ├── eodhd_client.py      # EODHD API client with retries/rate limiting
-│   │   ├── fred_client.py       # FRED API client with retries/rate limiting
-│   │   ├── io_parquet.py        # Parquet I/O with upsert logic
-│   │   ├── logging.py           # Ingestion logging
-│   │   └── schema.py            # Schema definitions
-│   ├── ingest_sp500_membership.py
-│   ├── ingest_ohlcv.py
-│   ├── ingest_corporate_actions.py
-│   ├── ingest_fundamentals.py
-│   ├── ingest_macro.py
-│   └── __main__.py              # CLI entrypoint
-├── equities/                     # Market data storage
-│   ├── ohlcv/daily/us/          # OHLCV partitioned by exchange
-│   ├── index_membership/        # S&P 500 membership history
-│   ├── corporate-actions/       # Dividends and splits
-│   └── fundamentals/            # Financial statements and ratios
-├── macro/                        # Macroeconomic data
-├── _meta/                        # Metadata and logs
-│   ├── ingestion-log.parquet    # Log of all ingestion runs
-│   ├── ticker-mapping.parquet   # Ticker normalization mapping
-│   └── schema-versions/         # Schema version history
-├── pyproject.toml
-└── README.md
+/srv/data/
+  wrds/crsp/      daily, events, delistings, names, index_membership, treasuries
+  wrds/comp/      Compustat annual and quarterly
+  wrds/sdc/       SDC Platinum M&A
+  wrds/optionm/   OptionMetrics          (not ingested — see Scale)
+  wrds/trace/     TRACE corporate bonds  (not ingested — see Scale)
+  wrds/fisd/      Mergent FISD
+  macro/fred/     rates, inflation, growth, employment, liquidity, fx, commodities
 ```
-
-## Installation
-
-### Requirements
-
-- Python 3.11+
-- EODHD API key (get one at [eodhd.com](https://eodhd.com/))
-- FRED API key (free, get one at [fred.stlouisfed.org](https://fred.stlouisfed.org/docs/api/api_key.html))
-
-### Setup
-
-1. Clone or navigate to the project directory:
-   ```bash
-   cd /Users/alecmitchell-thomson/Desktop/Coding/quant-data
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -e .
-   ```
-
-3. Create a `.env` file with your API keys:
-   ```bash
-   # Create .env with both API keys
-   cat > .env << EOF
-   EODHD_API_KEY=your_eodhd_key_here
-   FRED_API_KEY=your_fred_key_here
-   EOF
-   ```
-
-4. (Optional) Adjust paths in `config/ingest.yaml` if needed.
 
 ## Usage
 
-### Quick Start
-
 ```bash
-# 1. Update S&P 500 membership (always run first)
-python -m ingest sp500-membership
-
-# 2. Download OHLCV data from 2000 onwards
-python -m ingest ohlcv --start 2000-01-01
-
-# 3. Download corporate actions
-python -m ingest corporate-actions --start 2000-01-01
-
-# 4. Download fundamentals
-python -m ingest fundamentals
-
-# 5. Download macro data from FRED
-python -m ingest macro --start 2000-01-01
+set -a; . ./.env; set +a          # WRDS_USERNAME, FRED_API_KEY
+.venv/bin/python -m ingest --list
+.venv/bin/python -m ingest --dataset corporate_actions.ma_deals
+.venv/bin/python -m ingest --dataset equities.daily --years 2015-2026
+.venv/bin/python -m ingest --all --dry-run
 ```
 
-### CLI Commands
+Behaviour worth knowing:
 
-#### S&P 500 Membership
-```bash
-python -m ingest sp500-membership [--dry-run] [--force]
+- **Idempotent.** An output that already exists is skipped unless `--force` is given, so re-running
+  the whole config after adding one dataset costs nothing.
+- **Year-partitioned** when the configured `output` contains `{year}`: fetched a year at a time,
+  one file per year, so a 40-year daily table never has to fit in memory and an interrupted run
+  resumes where it stopped.
+- **Upsert, not overwrite.** New rows win on primary-key conflicts.
+- **Every run is logged** to `_meta/ingestion-log.parquet`. A failing dataset does not abort the
+  rest of the run.
+
+Adding a dataset is a change to `config/datasets.yaml` — provider, source table, output path,
+primary key and typed columns — not a code change.
+
+## Scale: two datasets are deliberately not ingested
+
+- **OptionMetrics** (`options.daily`) — `optionm.opprcd2022` alone is **365M rows**, and the
+  volatility surface for one year is **543M**. Twenty-five years is billions of rows and hundreds
+  of gigabytes. It is configured but must be pulled selectively (specific underlyings, specific
+  years), never with `--all`.
+- **TRACE enhanced** (`fixed_income.trace`) — ~455M rows.
+
+`--all` will attempt both. Prefer explicit `--dataset` for anything routine.
+
+## Layout of the code
+
+```
+ingest/
+  run.py            the runner: resolves config, fetches, upserts, logs
+  __main__.py       CLI entry point
+  common/
+    provider.py     registry; clients self-register via @register
+    base_client.py  client interface
+    wrds_client.py  psycopg2 against wrds-pgdata (password from ~/.pgpass)
+    fred_client.py  FRED REST
+    schema.py       builds a pyarrow schema from the config's column types
+    io_parquet.py   read / merge / validate / write
+    config_utils.py loads config/*.yaml
 ```
 
-#### OHLCV Data
-```bash
-python -m ingest ohlcv \
-  --start 2000-01-01 \
-  --end 2025-12-31 \
-  --max-workers 10 \
-  [--tickers AAPL.US MSFT.US] \
-  [--dry-run] [--force]
-```
-
-#### Corporate Actions (Dividends & Splits)
-```bash
-python -m ingest corporate-actions \
-  --start 2000-01-01 \
-  --max-workers 10 \
-  [--dividends-only] [--splits-only] \
-  [--dry-run]
-```
-
-#### Fundamentals
-```bash
-python -m ingest fundamentals \
-  --max-workers 3 \
-  [--annual] [--quarterly] [--ratios] [--shares] [--classifications] \
-  [--tickers AAPL.US MSFT.US] \
-  [--dry-run]
-```
-
-#### Macroeconomic Data (from FRED)
-```bash
-python -m ingest macro \
-  --start 2000-01-01 \
-  [--series DGS10 FEDFUNDS UNRATE GDP] \
-  [--dry-run]
-
-# Series are FRED series IDs - find more at https://fred.stlouisfed.org/
-# Examples: DGS10 (10Y Treasury), FEDFUNDS (Fed Funds Rate), 
-#           UNRATE (Unemployment), GDP, CPIAUCSL (CPI), VIX
-```
-
-#### Run Full Pipeline
-```bash
-python -m ingest all \
-  --start 2000-01-01 \
-  --max-workers 10 \
-  [--skip-membership] [--skip-ohlcv] [--skip-actions] \
-  [--skip-fundamentals] [--skip-macro] \
-  [--dry-run]
-```
-
-### Common Options
-
-- `--dry-run`: Preview what would be downloaded without writing data
-- `--force`: Force re-download even if data exists
-- `--max-workers N`: Number of parallel workers for downloads
-- `--start DATE`: Start date for historical data (YYYY-MM-DD)
-- `--end DATE`: End date (YYYY-MM-DD, defaults to today)
-- `--tickers T1 T2`: Download specific tickers only
-
-## Data Quality Validation
-
-### Automated Checks
-
-The pipeline includes:
-- Schema validation (enforces dtypes and required columns)
-- Primary key deduplication
-- Missing value detection
-- Ingestion logging (tracks all runs with status and row counts)
-
-### Manual Validation Checklist
-
-After running the ingestion, verify:
-
-1. **Membership Data**:
-   ```python
-   import pandas as pd
-   membership = pd.read_parquet("equities/index_membership/sp500.parquet")
-   print(f"Total constituents: {len(membership)}")
-   print(f"Current members: {membership['end_date'].isna().sum()}")
-   ```
-
-2. **OHLCV Data**:
-   ```python
-   # Check a known ticker
-   aapl = pd.read_parquet("equities/ohlcv/daily/us/NASDAQ/NASDAQ.parquet")
-   aapl = aapl[aapl['ticker'] == 'AAPL.US']
-   print(f"AAPL rows: {len(aapl)}")
-   print(f"Date range: {aapl['date'].min()} to {aapl['date'].max()}")
-   print(f"Missing values:\n{aapl[['open','high','low','close','volume']].isna().sum()}")
-   ```
-
-3. **Corporate Actions**:
-   ```python
-   dividends = pd.read_parquet("equities/corporate-actions/dividends.parquet")
-   splits = pd.read_parquet("equities/corporate-actions/splits.parquet")
-   print(f"Total dividends: {len(dividends)}")
-   print(f"Total splits: {len(splits)}")
-   
-   # Spot check known events (e.g., AAPL 4:1 split on 2020-08-31)
-   aapl_splits = splits[splits['ticker'] == 'AAPL.US']
-   print(aapl_splits)
-   ```
-
-4. **Fundamentals**:
-   ```python
-   annual = pd.read_parquet("equities/fundamentals/annual/statements.parquet")
-   print(f"Total annual statements: {len(annual)}")
-   print(f"Tickers with data: {annual['ticker'].nunique()}")
-   
-   # Check a known ticker
-   aapl_annual = annual[annual['ticker'] == 'AAPL.US'].sort_values('period_end_date')
-   print(f"AAPL annual statements: {len(aapl_annual)}")
-   print(aapl_annual[['period_end_date', 'revenue', 'net_income']].tail())
-   ```
-
-5. **Ingestion Log**:
-   ```python
-   log = pd.read_parquet("_meta/ingestion-log.parquet")
-   print(log.groupby(['dataset', 'status']).size())
-   print(f"\nLast run: {log['timestamp'].max()}")
-   ```
-
-## Configuration
-
-Edit `config/ingest.yaml` to customize:
-
-- Data paths
-- Date ranges
-- API settings (rate limits, timeouts, retries)
-- Concurrency (max workers, batch sizes)
-- Dataset-specific options (partitioning, required fields)
-
-## Schema Versioning
-
-Schemas are defined in `ingest/common/schema.py` with version `1.0.0`. Each schema includes:
-- Field names and dtypes (via PyArrow)
-- Required columns
-- Primary keys (for deduplication)
-
-Schema versions are saved to `_meta/schema-versions/` for reproducibility.
-
-## Handling Delisted Tickers
-
-EODHD appends `_old` to delisted ticker symbols (e.g., `AAPL.US_old`). The pipeline:
-- Tracks delisted status in `_meta/ticker-mapping.parquet`
-- Normalizes tickers by stripping `_old` suffix
-- Ensures historical data for delisted tickers is retained
-
-## Idempotency & Append-Only Design
-
-- **Upsert Logic**: New data is merged with existing data based on primary keys
-- **Conflict Resolution**: On conflicts, new data overwrites old (for corrections)
-- **No Silent Overwrites**: Existing files are read → merged → written back
-- **Ingestion Log**: Every run is logged with status, row counts, and timestamps
-
-## Performance & Rate Limits
-
-- **Default Settings**: 10 requests/second, burst size 20
-- **Parallel Workers**: 5 for OHLCV/actions, 3 for fundamentals (heavier requests)
-- **Retry Strategy**: Exponential backoff (2, 4, 8, 16, 32 seconds)
-- **Connection Pooling**: HTTP session reuse for efficiency
-
-Adjust in `config/ingest.yaml`:
-```yaml
-api:
-  rate_limit:
-    requests_per_second: 10
-    burst_size: 20
-
-concurrency:
-  max_workers: 5
-```
-
-## Extending the Pipeline
-
-### Adding New Data Sources
-
-1. Create a new ingestion script (e.g., `ingest_options.py`)
-2. Define schema in `common/schema.py`
-3. Add client methods to `common/eodhd_client.py` if needed
-4. Wire up in `__main__.py` CLI
-
-### Adding New Macro Series from FRED
-
-1. Find series at [fred.stlouisfed.org](https://fred.stlouisfed.org/)
-2. Edit `config/ingest.yaml`:
-   ```yaml
-   datasets:
-     macro:
-       series:
-         - code: "NEW_SERIES_ID"  # FRED series ID
-           name: "descriptive_name"
-           category: "rates"  # or inflation, growth, employment, etc.
-   ```
-
-Example FRED series:
-- Interest rates: DGS10, DGS2, FEDFUNDS, T10Y2Y
-- Inflation: CPIAUCSL, CPILFESL, PCEPI, T5YIE
-- Growth: GDP, INDPRO, UMCSENT, VIXCLS
-- Employment: UNRATE, PAYEMS, ICSA, U6RATE
-
-## Troubleshooting
-
-### Common Issues
-
-1. **API Key Not Found**:
-   - Ensure `.env` file exists with both `EODHD_API_KEY` and `FRED_API_KEY`
-   - Test keys: `python -c "import os; from dotenv import load_dotenv; load_dotenv(); print(os.getenv('EODHD_API_KEY'), os.getenv('FRED_API_KEY'))"`
-   - Get FRED API key (free): https://fred.stlouisfed.org/docs/api/api_key.html
-
-2. **Rate Limit Errors**:
-   - Reduce `requests_per_second` in `config/ingest.yaml`
-   - Reduce `max_workers` for parallel downloads
-
-3. **No Data Returned for Ticker**:
-   - Check ticker format (should include exchange, e.g., `AAPL.US`)
-   - Verify ticker was in S&P 500 during the date range
-   - Check EODHD API directly for data availability
-
-4. **Schema Validation Errors**:
-   - Review error message for missing/incorrect columns
-   - Check `common/schema.py` for required fields
-   - Use `--dry-run` to preview data before writing
-
-### Debug Mode
-
-Set log level to DEBUG in `config/ingest.yaml`:
-```yaml
-logging:
-  log_level: "DEBUG"
-```
-
-Or inspect the ingestion log:
-```python
-import pandas as pd
-log = pd.read_parquet("_meta/ingestion-log.parquet")
-failed = log[log['status'] == 'failed']
-print(failed[['ticker', 'dataset', 'error_message']])
-```
-
-## License
-
-This project is for personal use. Data from EODHD is subject to their terms of service.
-
-## Acknowledgments
-
-- Equity data provided by [EODHD](https://eodhd.com/)
-- Macroeconomic data provided by [FRED](https://fred.stlouisfed.org/) (Federal Reserve Bank of St. Louis)
-- Built with Pandas, PyArrow, and Requests
+Clients must be imported for their `@register` decorator to run; `run.py` imports them for that
+side effect.

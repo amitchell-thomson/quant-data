@@ -2,7 +2,7 @@ equities:
   daily:
     provider: wrds
     source: crsp.dsf
-    output: equities/daily/{year}.parquet
+    output: wrds/crsp/daily/{year}.parquet
     partition_by: year
     start_year: 1985
     primary_key: [permno, date]
@@ -19,7 +19,7 @@ equities:
   events:
     provider: wrds
     source: crsp.dse
-    output: equities/events/events.parquet
+    output: wrds/crsp/events/events.parquet
     primary_key: [permno, date, distcd]
     columns:
       permno: int32 # permanent security identifier
@@ -32,7 +32,7 @@ equities:
   delistings:
     provider: wrds
     source: crsp.dsedelist
-    output: equities/delistings/delistings.parquet
+    output: wrds/crsp/delistings/delistings.parquet
     primary_key: [permno, dlstdt]
     columns:
       permno: int32 # permanent security identifier
@@ -44,7 +44,7 @@ equities:
   names:
     provider: wrds
     source: crsp.stocknames
-    output: equities/names/names.parquet
+    output: wrds/crsp/names/names.parquet
     primary_key: [permno, namedt]
     columns:
       permno: int32 # permanent security identifier
@@ -59,7 +59,7 @@ equities:
   fundamentals_annual:
     provider: wrds
     source: comp.funda
-    output: equities/fundamentals_annual/funda.parquet
+    output: wrds/comp/funda.parquet
     primary_key: [gvkey, datadate, indfmt]
     columns:
       gvkey: string # Compustat permanent company identifier
@@ -92,7 +92,7 @@ equities:
   fundamentals_quarterly:
     provider: wrds
     source: comp.fundq
-    output: equities/fundamentals_quarterly/fundq.parquet
+    output: wrds/comp/fundq.parquet
     primary_key: [gvkey, datadate, indfmt]
     columns:
       gvkey: string # Compustat permanent company identifier
@@ -116,7 +116,7 @@ index_membership:
   sp500:
     provider: wrds
     source: crsp.msp500list
-    output: index_membership/sp500.parquet
+    output: wrds/crsp/index_membership/sp500.parquet
     primary_key: [permno, start]
     columns:
       permno: int32 # permanent security identifier
@@ -127,7 +127,7 @@ fixed_income:
   trace:
     provider: wrds
     source: trace_enhanced.trc_tr_th
-    output: fixed_income/trace/{year}.parquet
+    output: wrds/trace/{year}.parquet
     partition_by: year
     start_year: 2002
     primary_key: [cusip_id, trd_exctn_dt, trd_exctn_tm, entrd_vol_qt, rptd_pr]
@@ -145,7 +145,7 @@ fixed_income:
   fisd:
     provider: wrds
     source: mergent.fisd_mergedissue
-    output: fixed_income/fisd.parquet
+    output: wrds/fisd/fisd.parquet
     primary_key: [issue_id]
     columns:
       issue_id: string # Mergent issue identifier
@@ -165,7 +165,7 @@ fixed_income:
   treasuries:
     provider: wrds
     source: crspa.tfz_dly
-    output: fixed_income/treasuries/{year}.parquet
+    output: wrds/crsp/treasuries/{year}.parquet
     partition_by: year
     start_year: 1961
     primary_key: [kycrspid, caldt]
@@ -185,7 +185,7 @@ options:
   daily:
     provider: wrds
     source: optionm.opprcd
-    output: options/{year}.parquet
+    output: wrds/optionm/{year}.parquet
     partition_by: year
     start_year: 1996
     primary_key: [secid, date, exdate, cp_flag, strike_price]
@@ -208,7 +208,7 @@ options:
 fx:
   spot:
     provider: fred
-    output: fx/fx.parquet
+    output: macro/fred/fx.parquet
     primary_key: [series_code, date]
     columns:
       series_code: string
@@ -233,7 +233,7 @@ fx:
 commodities:
   spot:
     provider: fred
-    output: commodities/commodities.parquet
+    output: macro/fred/commodities.parquet
     primary_key: [series_code, date]
     columns:
       series_code: string
@@ -255,7 +255,7 @@ commodities:
 macro:
   rates:
     provider: fred
-    output: macro/rates.parquet
+    output: macro/fred/rates.parquet
     alfred_output: macro/rates_alfred.parquet
     primary_key: [series_code, date]
     columns:
@@ -301,7 +301,7 @@ macro:
 
   inflation:
     provider: fred
-    output: macro/inflation.parquet
+    output: macro/fred/inflation.parquet
     alfred_output: macro/inflation_alfred.parquet
     primary_key: [series_code, date]
     columns:
@@ -329,7 +329,7 @@ macro:
 
   growth:
     provider: fred
-    output: macro/growth.parquet
+    output: macro/fred/growth.parquet
     alfred_output: macro/growth_alfred.parquet
     primary_key: [series_code, date]
     columns:
@@ -361,7 +361,7 @@ macro:
 
   employment:
     provider: fred
-    output: macro/employment.parquet
+    output: macro/fred/employment.parquet
     alfred_output: macro/employment_alfred.parquet
     primary_key: [series_code, date]
     columns:
@@ -388,7 +388,7 @@ macro:
 
   liquidity:
     provider: fred
-    output: macro/liquidity.parquet
+    output: macro/fred/liquidity.parquet
     alfred_output: macro/liquidity_alfred.parquet
     primary_key: [series_code, date]
     columns:
@@ -412,3 +412,113 @@ macro:
           name: nfci,
           description: Chicago Fed National Financial Conditions Index,
         }
+
+corporate_actions:
+  # SDC Platinum M&A. The reason this dataset is here: `pr` is the offer price per share and
+  # `pmday`/`pmwk`/`pm4wk` are the premium over the target's price 1 day / 1 week / 4 weeks before
+  # announcement. That is the merger-arb spread, precomputed, which no free source provides.
+  #
+  # Primary key is master_deal_no alone. It is very nearly unique: 1,629,894 rows against
+  # 1,629,766 distinct values, so 128 rows (0.008%) are genuine duplicates in the WRDS view and
+  # collapse on upsert. No composite of the obvious columns is unique either, so this is the
+  # honest choice rather than a missed one.
+  ma_deals:
+    provider: wrds
+    source: tr_sdc_ma.wrds_ma_details
+    output: wrds/sdc/ma_deals.parquet
+    primary_key: [master_deal_no]
+    columns:
+      master_deal_no: string # SDC deal identifier
+      dateann: date32 # announcement date
+      dateannorig: date32 # original announcement, where the deal was re-announced
+      dateeff: date32 # effective date - completion
+      datewith: date32 # withdrawal date
+      dateuncon: date32 # unconditional date
+      datetender: date32 # tender offer launch
+      datefin: date32
+      tmanames: string # target name
+      amanames: string # acquirer name
+      master_cusip: string # target CUSIP (6) - links to CRSP
+      target_sedol: string # target SEDOL (7) - links to UK lines
+      tticker: string # target ticker
+      acusip: string # acquirer CUSIP
+      acquiror_sedol: string
+      tnation: string # target nation - the UK/US filter
+      tnationcode: string
+      anation: string
+      anationcode: string
+      tpublic: string # target public/private status
+      apublic: string
+      tsicp: string # target SIC
+      ttf_macro_desc: string # target sector
+      atf_macro_desc: string
+      status: string # Completed / Withdrawn / Pending
+      statuscode: string
+      form: string # deal form - merger, acquisition of assets, etc
+      attitude: string # friendly / hostile / unsolicited
+      attitude_change_yn: string # turned hostile mid-life
+      compete: string # competing bid present
+      rumor: string
+      tender: string
+      stender: string
+      divest: string
+      division: string
+      spin: string
+      splitoff: string
+      recap: string
+      repurch: string
+      restruct: string
+      albofirm: string # LBO
+      hedge_fund_involv_yn: string # arbitrageur presence
+      buyside_hedge_fund_involv_yn: string
+      pr: float64 # OFFER PRICE PER SHARE
+      consid: string # consideration, free text
+      considoff: string
+      pct_cash: float64 # consideration mix
+      pct_stk: float64
+      pct_other: float64
+      pct_unknown: float64
+      pctacq: float64 # percent of shares sought
+      pctown: float64
+      psought: float64
+      psoughtown: float64
+      pheld: float64
+      deal_value: float64
+      eqval: float64
+      entval: float64
+      rankval: float64
+      mv: float64
+      amv: float64
+      pmday: float64 # PREMIUM over target price 1 day before announcement
+      pmwk: float64 # premium, 1 week before
+      pm4wk: float64 # premium, 4 weeks before
+      c1day: float64 # target close 1 day before announcement
+      c1wk: float64
+      c4wk: float64
+      salesltm: float64 # target financials, last twelve months
+      ebitltm: float64
+      niltm: float64
+      tass: float64
+      netass: float64
+      bookvalue: float64
+      epsltm: float64
+      pe: float64
+      sftype: string # source of funds - financing risk
+      sfbor: string
+      sfbridge: string
+      sfcom: string
+      sfcorp: string
+      sfdebt: string
+      sffor: string
+      sfjunk: string
+      sflc: string
+      sfmez: string
+      sfpfd: string
+      sfrights: string
+      sfstaple: string
+      a_lockup_pct: float64
+      votecontrol: float64
+      a_postmerge_own_pct: float64
+      tfeetot: float64
+      afeetot: float64
+      feetot: float64
